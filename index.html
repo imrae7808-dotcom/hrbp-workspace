@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HRBP工作台 - 人才生命周期智能系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f7fa;color:#333;font-size:14px;line-height:1.5}
+.layout{display:flex;height:100vh}
+.sidebar{width:200px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{height:48px;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid #e8e8e8}
+.sidebar-logo svg{width:22px;height:22px;flex-shrink:0}
+.sidebar-logo span{font-size:14px;font-weight:600;color:#333}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:all .2s;font-size:13px;color:#666}
+.nav-item:hover{background:#f5f7fa;color:#333}
+.nav-item.active{background:#e6f7ff;color:#1890ff;border-right:3px solid #1890ff}
+.nav-group{padding:0}
+.nav-group-title{font-size:12px;color:#666;padding:10px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+.nav-group-items{display:none}
+.nav-group.open .nav-group-items{display:block}
+.nav-group-items .nav-item{padding-left:28px;font-size:12px}
+.topbar{height:48px;background:#fff;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0}
+.topbar-left{font-size:14px;color:#333}
+.topbar-right{display:flex;align-items:center;gap:16px;font-size:13px;color:#666}
+.topbar-right .user{display:flex;align-items:center;gap:6px}
+.topbar-right .avatar{width:28px;height:28px;border-radius:50%;background:#ff6900;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+.lang-toggle{display:flex;border:1px solid #d9d9d9;border-radius:4px;overflow:hidden}
+.lang-btn{padding:4px 10px;font-size:12px;cursor:pointer;border:none;background:#fff;color:#666}
+.lang-btn.active{background:#1890ff;color:#fff}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.content{flex:1;overflow-y:auto;padding:20px;background:#f5f7fa}
+.page-title{font-size:18px;font-weight:600;margin-bottom:16px}
+.card{background:#fff;border-radius:8px;border:1px solid #e8e8e8;padding:16px;margin-bottom:12px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+.card-link{font-size:12px;color:#1890ff;cursor:pointer}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.stat-card{text-align:center;padding:12px 8px}
+.stat-value{font-size:28px;font-weight:600}
+.stat-label{font-size:12px;color:#999;margin-top:4px}
+.nine-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.grid-cell{padding:12px 8px;border-radius:6px;cursor:pointer;transition:all .2s;min-height:80px}
+.grid-cell:hover{transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.grid-label{font-size:10px;color:#999;margin-bottom:4px}
+.grid-names{font-size:12px;line-height:1.6}
+.radar-wrap{display:flex;justify-content:center;padding:16px 0}
+.claim-item{padding:8px 12px;background:#fafafa;border-radius:4px;margin-bottom:6px;font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .2s}
+.claim-item:hover{background:#f0f5ff}
+.claim-type{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:500}
+.claim-type.leadership{background:#fff1f0;color:#f5222d}
+.claim-type.sales{background:#e6f7ff;color:#1890ff}
+.claim-type.delivery{background:#f6ffed;color:#52c41a}
+.claim-type.domain{background:#f9f0ff;color:#722ed1}
+.claim-type.customer{background:#fff7e6;color:#fa8c16}
+.claim-type.project{background:#e6fffb;color:#13c2c2}
+.claim-type.technical{background:#f0f0f0;color:#666}
+.pattern-card{background:#fafafa;border-radius:6px;padding:12px;margin-bottom:8px;border-left:3px solid #1890ff;cursor:pointer;transition:all .2s}
+.pattern-card:hover{background:#f0f5ff}
+.pattern-card.failure{border-left-color:#f5222d}
+.pattern-type{font-size:10px;padding:2px 6px;border-radius:3px;display:inline-block;margin-bottom:6px}
+.pattern-type.success{background:#e6f7ff;color:#1890ff}
+.pattern-type.failure{background:#fff1f0;color:#f5222d}
+.pattern-text{font-size:12px;margin-bottom:4px}
+.pattern-meta{font-size:11px;color:#999}
+.score-bar{height:8px;border-radius:4px;background:#f0f0f0;overflow:hidden;margin:4px 0}
+.score-bar .fill{height:100%;border-radius:4px;transition:width .6s}
+.score-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.score-label{font-size:12px;color:#666;width:80px}
+.score-value{font-size:13px;font-weight:600;width:40px;text-align:right}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);z-index:1000;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:8px;padding:20px;max-width:520px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{cursor:pointer;font-size:18px;color:#999}
+.tag{display:inline-block;font-size:10px;padding:2px 6px;border-radius:3px;margin:2px}
+.tag.green{background:#f6ffed;color:#52c41a}
+.tag.blue{background:#e6f7ff;color:#1890ff}
+.tag.red{background:#fff1f0;color:#f5222d}
+.tag.yellow{background:#fffbe6;color:#faad14}
+.ref-card{background:#fafafa;border-radius:6px;padding:10px;margin-top:8px;border:1px solid #f0f0f0}
+.ref-card .ref-title{font-size:11px;font-weight:600;color:#666;margin-bottom:4px}
+.ref-card .ref-text{font-size:12px;color:#333;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <svg viewBox="-200 -200 512 512" width="22" height="22"><g><path fill="#FF6900" d="M258.626-146.231c-48.304-48.118-117.759-53.496-202.634-53.496c-84.982,0-154.542,5.44-202.826,53.688c-48.277,48.228-53.174,117.676-53.174,202.561c0,84.899,4.897,154.368,53.194,202.613c48.281,48.255,117.833,53.139,202.806,53.139c84.974,0,154.514-4.884,202.795-53.139c48.294-48.254,53.205-117.714,53.205-202.613C311.992-28.472,307.028-97.995,258.626-146.231z"/><path fill="#FFF" d="M204.546-41.122c1.759,0,3.223,1.417,3.223,3.161v189.386c0,1.715-1.464,3.139-3.223,3.139H163.05c-1.781,0-3.228-1.424-3.228-3.139V-37.961c0-1.743,1.446-3.161,3.228-3.161H204.546zM24.468-41.122c31.303,0,64.033,1.435,80.176,17.589c15.871,15.897,17.59,47.549,17.656,78.286v96.671c0,1.715-1.446,3.139-3.219,3.139h-41.49c-1.777,0-3.229-1.424-3.229-3.139V53.09c-0.044-17.167-1.031-34.81-9.884-43.692c-7.62-7.641-21.839-9.391-36.625-9.754h-75.21c-1.764,0-3.208,1.419-3.208,3.136v148.645c0,1.715-1.462,3.139-3.237,3.139h-41.516c-1.774,0-3.201-1.424-3.201-3.139V-37.961c0-1.743,1.426-3.161,3.201-3.161H24.468zM33.755,34.305c1.766,0,3.201,1.413,3.201,3.143v113.977c0,1.715-1.436,3.139-3.201,3.139H-9.829c-1.792,0-3.228-1.424-3.228-3.139V37.448c0-1.73,1.436-3.143,3.228-3.143H33.755z"/></g></svg>
+      <span>HRBP工作台</span>
+    </div>
+    <nav class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">📊 工作台</nav>
+    <div class="nav-group open">
+      <div class="nav-group-title" onclick="this.parentElement.classList.toggle('open')"><span>👥 人才管理</span><span>›</span></div>
+      <div class="nav-group-items">
+        <div class="nav-item" data-page="employee" onclick="showPage('employee')">员工档案</div>
+        <div class="nav-item" data-page="review" onclick="showPage('review')">人才盘点</div>
+      </div>
+    </div>
+    <div class="nav-group open">
+      <div class="nav-group-title" onclick="this.parentElement.classList.toggle('open')"><span>🧠 智能分析</span><span>›</span></div>
+      <div class="nav-group-items">
+        <div class="nav-item" data-page="learning" onclick="showPage('learning')">学习洞察</div>
+        <div class="nav-item" data-page="optimize" onclick="showPage('optimize')">招聘优化</div>
+      </div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">人才生命周期智能系统</div>
+      <div class="topbar-right">
+        <div class="lang-toggle"><button class="lang-btn active" onclick="setLang('zh')">中文</button><button class="lang-btn" onclick="setLang('en')">EN</button></div>
+        <span class="user"><div class="avatar">高</div>高翔</span>
+      </div>
+    </div>
+    <div class="content" id="page-content"></div>
+  </div>
+</div>
+<div id="modal-container"></div>
+<script>
+var EMP=[
+ {id:"001",name:"张三",pos:"Key Account Manager",dept:"Sales",lv:"senior",hire:"2025-11",score:5,perf:"S",grid:"核心骨干",
+  perfH:[{p:"2025H2",g:"A"},{p:"2026H1",g:"S"}],
+  claims:[{t:"从零搭建大客户管理体系，覆盖 KA/SKA/National Account 三层",c:"leadership",d:"KeyAccountManagement"},{t:"主导季度业务回顾（QBR）机制设计，客户留存率提升 23%",c:"sales",d:"KeyAccountManagement"},{t:"跨部门协调产品、交付、售后资源，解决客户定制需求",c:"delivery",d:"Delivery"},{t:"管理 15 人大客户团队，年度 GMV 贡献 2.8 亿",c:"leadership",d:"Sales"}],
+  radar:{大客户管理:90,销售能力:85,跨部门协调:88,领导力:82,数据分析:75,客户关系:88}},
+ {id:"002",name:"李四",pos:"Network Development Manager",dept:"NetworkDev",lv:"senior",hire:"2025-09",score:4,perf:"A",grid:"核心骨干",
+  perfH:[{p:"2025H2",g:"A"},{p:"2026H1",g:"A"}],
+  claims:[{t:"经销商网络规划与开发经验",c:"domain",d:"NetworkDevelopment"},{t:"渠道标准体系设计与落地执行",c:"domain",d:"NetworkDevelopment"},{t:"网络评估模型搭建与数据分析",c:"sales",d:"NetworkDevelopment"}],
+  radar:{网络规划:85,渠道开发:88,数据分析:80,标准执行:82,项目管理:75,客户沟通:70}},
+ {id:"003",name:"王五",pos:"Technical Support Engineer",dept:"Service",lv:"mid",hire:"2026-01",score:3,perf:"B",grid:"待观察人才",
+  perfH:[{p:"2026H1",g:"B"}],
+  claims:[{t:"嵌入式系统调试与故障排查",c:"technical",d:"Service"},{t:"售后技术支持流程管理",c:"domain",d:"Service"}],
+  radar:{技术能力:78,问题排查:82,客户沟通:60,文档编写:65,团队协作:55}},
+ {id:"004",name:"赵六",pos:"Delivery Operations Manager",dept:"Delivery",lv:"senior",hire:"2025-08",score:3,perf:"C",grid:"低绩效人才",
+  perfH:[{p:"2025H2",g:"C"},{p:"2026H1",g:"C"}],
+  claims:[{t:"主导多个大型项目交付",c:"project",d:"Delivery"},{t:"建立项目管理流程体系",c:"delivery",d:"Delivery"}],
+  radar:{项目管理:60,交付能力:55,团队管理:45,跨部门协调:40,问题解决:50}},
+ {id:"005",name:"孙七",pos:"Marketing Manager Europe",dept:"Marketing",lv:"senior",hire:"2025-10",score:5,perf:"A",grid:"高潜人才",
+  perfH:[{p:"2025H2",g:"A"},{p:"2026H1",g:"A"}],
+  claims:[{t:"数字营销策略制定与执行",c:"domain",d:"DigitalMarketing"},{t:"品牌管理与市场推广",c:"domain",d:"BrandManagement"},{t:"市场调研与竞品分析",c:"domain",d:"MarketResearch"}],
+  radar:{数字营销:88,品牌管理:82,市场调研:85,数据分析:78,团队管理:75}},
+ {id:"006",name:"周八",pos:"Warranty Manager",dept:"Service",lv:"mid",hire:"2026-02",score:4,perf:"B+",grid:"基础合格人才",
+  perfH:[{p:"2026H1",g:"B+"}],
+  claims:[{t:"保修流程管理与数据分析",c:"domain",d:"Service"},{t:"售后成本控制与优化",c:"delivery",d:"Service"}],
+  radar:{保修管理:75,成本控制:72,数据分析:68,客户沟通:65,流程优化:70}},
+ {id:"007",name:"吴九",pos:"Fleet Sales Manager",dept:"FleetSales",lv:"principal",hire:"2025-06",score:5,perf:"S",grid:"核心骨干",
+  perfH:[{p:"2025H2",g:"S"},{p:"2026H1",g:"S"}],
+  claims:[{t:"企业车队销售年度签约 50+ 家",c:"sales",d:"FleetSales"},{t:"车队融资方案设计与谈判",c:"domain",d:"FleetFinancing"},{t:"经销商渠道开发与管理",c:"customer",d:"NetworkDevelopment"},{t:"建立车队客户数据分析体系",c:"domain",d:"FleetDataAnalysis"}],
+  radar:{车队销售:92,融资谈判:85,渠道管理:80,数据分析:82,团队领导:88}},
+ {id:"008",name:"郑十",pos:"Embedded Software Engineer",dept:"R&D",lv:"senior",hire:"2025-12",score:4,perf:"A",grid:"高潜人才",
+  perfH:[{p:"2025H2",g:"A"},{p:"2026H1",g:"A"}],
+  claims:[{t:"嵌入式系统开发与调试",c:"technical",d:"Embedded"},{t:"AUTOSAR 架构设计与实施",c:"domain",d:"AUTOSAR"},{t:"功能安全标准（ISO 26262）落地",c:"domain",d:"FunctionalSafety"}],
+  radar:{嵌入式开发:88,AUTOSAR:82,功能安全:80,代码质量:85,团队协作:72}},
+ {id:"009",name:"陈十一",pos:"Retail Training Manager",dept:"RetailOps",lv:"mid",hire:"2026-03",score:3,perf:"B",grid:"待观察人才",
+  perfH:[{p:"2026H1",g:"B"}],
+  claims:[{t:"零售培训课程设计与执行",c:"domain",d:"RetailTraining"},{t:"门店运营标准化",c:"domain",d:"StoreOperations"}],
+  radar:{培训设计:72,门店运营:65,数据分析:55,团队管理:60,课程开发:70}},
+ {id:"010",name:"林十二",pos:"Program Manager",dept:"PM",lv:"senior",hire:"2025-07",score:3,perf:"C",grid:"低绩效人才",
+  perfH:[{p:"2025H2",g:"C"},{p:"2026H1",g:"C"}],
+  claims:[{t:"技术架构设计与评审",c:"technical",d:"R&D"},{t:"跨部门项目协调",c:"leadership",d:"PM"}],
+  radar:{技术能力:78,项目管理:55,跨部门协调:40,团队领导:42,沟通能力:58}},
+ {id:"011",name:"黄十三",pos:"Store Operations Manager",dept:"StoreMgmt",lv:"mid",hire:"2026-01",score:4,perf:"A",grid:"高潜人才",
+  perfH:[{p:"2026H1",g:"A"}],
+  claims:[{t:"门店运营效率提升 15%",c:"domain",d:"StoreOpsManagement"},{t:"零售绩效管理体系搭建",c:"domain",d:"StorePerformanceMgmt"},{t:"门店客户体验优化",c:"domain",d:"StoreCustomerExperience"}],
+  radar:{门店运营:85,绩效管理:80,客户体验:82,数据分析:75,团队管理:70}}
+];
+
+var PATTERNS=[
+  {type:"success",text:"具备'从零搭建大客户体系'经验的候选人，在 KAM 岗位上高绩效概率 78%",conf:.85,
+   ev:["张三 (S级)：从零搭建大客户管理体系，管理 15 人团队","吴九 (S级)：企业车队销售签约 50+ 家，类似大客户管理经验"],
+   detail:"张三的'从零搭建'经历与 KAM 岗位核心能力高度匹配，吴九的车队销售签约经验证明了类似的大客户管理能力。"},
+  {type:"success",text:"车队销售签约经验与 FleetSales 岗位高绩效强相关",conf:.88,
+   ev:["吴九 (S级)：年度签约 50+ 家，融资方案设计"],
+   detail:"吴九的签约量远超岗位要求，融资谈判能力是额外加分项。"},
+  {type:"success",text:"有具体数据支撑的 Claims 与高绩效强相关（r=0.81）",conf:.82,
+   ev:["张三：留存率提升 23%","李四：网络评估模型","孙七：数字营销策略","吴九：签约 50+ 家"],
+   detail:"高绩效员工的 Claims 中都包含可量化的数据，而非模糊的描述。"},
+  {type:"failure",text:"面试中声称'主导'但无法提供具体数据，低绩效概率 65%",conf:.72,
+   ev:["赵六 (C级)：声称'主导多个大型项目交付'但无法提供数据","林十二 (C级)：声称'跨部门项目协调'但实际无法推动"],
+   detail:"赵六面试时声称主导项目，但入职后发现只是参与者；林十二技术强但无法推动跨部门协作。"},
+  {type:"failure",text:"技术能力强但领导力 Claims 缺失，PM 岗位低绩效概率 58%",conf:.68,
+   ev:["林十二 (C级)：技术能力 78 分但领导力仅 42 分"],
+   detail:"林十二技术架构设计能力优秀，但缺乏推动跨部门协作的软技能，导致项目无法推进。"}
+];
+
+var GRID=[
+  {name:"低绩效",color:"#fff1f0",text:"#f5222d",emp:["赵六","林十二"]},
+  {name:"待观察",color:"#fffbe6",text:"#faad14",emp:["王五","陈十一"]},
+  {name:"基础合格",color:"#f5f5f5",text:"#999",emp:["周八"]},
+  {name:"高潜人才",color:"#e6f7ff",text:"#1890ff",emp:["孙七","郑十","黄十三"]},
+  {name:"核心骨干",color:"#f6ffed",text:"#52c41a",emp:["张三","李四","吴九"]}
+];
+
+var lang="zh",currentPage="dashboard",selEmp=EMP[0];
+function setLang(l){lang=l;document.querySelectorAll(".lang-btn").forEach(function(b){b.classList.toggle("active",b.textContent.trim()===(l==="zh"?"中文":"EN"))});showPage(currentPage)}
+function showPage(p){currentPage=p;document.querySelectorAll(".nav-item").forEach(function(n){n.classList.toggle("active",n.dataset.page===p)});var el=document.getElementById("page-content");
+  ({dashboard:rDash,employee:rEmp,review:rReview,learning:rLearn,optimize:rOpt})[p](el);}
+function showModal(title,body){document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="if(event.target===this)this.remove()"><div class="modal"><div class="modal-title">'+title+'<span class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">×</span></div>'+body+'</div></div>'}
+
+// Dashboard
+function rDash(el){
+  var T=lang==="zh";
+  el.innerHTML='<div class="page-title">'+(T?"工作台":"Dashboard")+'</div>'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#1890ff"></span>'+(T?"人才概览":"Talent Overview")+'</div></div>'
+  +'<div class="stats-grid">'
+  +'<div class="stat-card"><div class="stat-value">47</div><div class="stat-label">'+(T?"员工":"Employees")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value" style="color:#52c41a">3</div><div class="stat-label">'+(T?"核心骨干":"Core")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value" style="color:#1890ff">3</div><div class="stat-label">'+(T?"高潜":"High Pot.")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value" style="color:#f5222d">2</div><div class="stat-label">'+(T?"低绩效":"Low Perf.")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value">8</div><div class="stat-label">'+(T?"学习模式":"Patterns")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value">12</div><div class="stat-label">'+(T?"在招岗位":"Positions")+'</div></div>'
+  +'</div></div>'
+  +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#1890ff"></span>'+(T?"2026-Q1 盘点结果":"2026-Q1 Review")+'</div><span class="card-link" onclick="showPage(\'review\')">'+(T?"详情→":"Details→")+'</span></div>'
+  +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+GRID.map(function(c){return '<div style="background:'+c.color+';padding:8px 14px;border-radius:6px;text-align:center"><div style="font-size:20px;font-weight:600;color:'+c.text+'">'+c.emp.length+'</div><div style="font-size:11px;color:'+c.text+'">'+c.name+'</div></div>'}).join("")+'</div></div>'
+  +'<div class="card"><div class="card-title">'+(T?"入职追踪":"Onboarding")+'</div><div style="margin-top:8px;display:grid;gap:6px">'
+  +'<div style="background:#f6ffed;padding:8px 10px;border-radius:4px;font-size:12px"><span style="color:#52c41a">✅</span> 张三 → S级 '+(T?"系统学习成功模式":"System learned success")+'</div>'
+  +'<div style="background:#fff1f0;padding:8px 10px;border-radius:4px;font-size:12px"><span style="color:#f5222d">❌</span> 赵六 → C级 '+(T?"系统学习失败模式":"System learned failure")+'</div>'
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+(T?"核心骨干":"Core Backbone")+'</div><span class="card-link" onclick="showPage(\'employee\')">'+(T?"全部→":"All→")+'</span></div>'
+  +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+EMP.filter(function(e){return e.grid==="核心骨干"}).map(function(e){return '<div class="claim-item" onclick="selEmp=EMP.find(function(x){return x.id===\''+e.id+'\'});showPage(\'employee\')" style="flex:1;min-width:180px"><div style="width:36px;height:36px;border-radius:50%;background:#e6f7ff;display:flex;align-items:center;justify-content:center;font-size:14px;color:#1890ff;font-weight:600">'+e.name[0]+'</div><div><div style="font-size:13px;font-weight:500">'+e.name+'</div><div style="font-size:11px;color:#999">'+e.pos+'</div></div><span class="tag green" style="margin-left:auto">S</span></div>'}).join("")+'</div></div>';
+}
+
+// Employee Details
+function rEmp(el){
+  var T=lang==="zh",e=selEmp;
+  var pc=e.perf==="S"?"#52c41a":e.perf==="A"?"#1890ff":e.perf==="B+"?"#faad14":"#f5222d";
+  el.innerHTML='<div class="page-title">'+(T?"员工档案":"Employee")+'</div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div>'
+  +'<div class="card"><div class="card-title">'+(T?"基本信息":"Info")+'</div><div style="margin-top:8px;font-size:13px;line-height:2;color:#666">'
+  +'<div><b>'+(T?"姓名":"Name")+'：</b> '+e.name+'</div>'
+  +'<div><b>'+(T?"岗位":"Position")+'：</b> '+e.pos+'</div>'
+  +'<div><b>'+(T?"部门":"Dept")+'：</b> '+e.dept+'</div>'
+  +'<div><b>'+(T?"资历":"Level")+'：</b> '+e.lv+'</div>'
+  +'<div><b>'+(T?"入职":"Hire")+'：</b> '+e.hire+'</div>'
+  +'<div><b>'+(T?"招聘分数":"Score")+'：</b> <span style="color:'+(e.score>=4?"#52c41a":e.score>=3?"#faad14":"#f5222d")+';font-weight:600">'+e.score+' '+(e.score>=5?T?"卓越":"Outstanding":e.score>=4?T?"优秀":"Excellent":T?"合格":"Pass")+'</span></div>'
+  +'<div><b>'+(T?"绩效":"Perf")+'：</b> <span style="color:'+pc+';font-weight:600">'+e.perf+'</span> — '+e.grid+'</div></div></div>'
+  +'<div class="card"><div class="card-title">'+(T?"绩效历史":"Perf History")+'</div><div style="margin-top:8px">'
+  +e.perfH.map(function(h){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:12px;color:#666;width:56px">'+h.p+'</span><div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+(h.g==="S"?100:h.g==="A"?85:h.g==="B+"?70:h.g==="B"?55:35)+'%;background:'+(h.g==="S"?"#52c41a":h.g==="A"?"#1890ff":h.g==="B+"?"#faad14":"#f5222d")+';border-radius:3px"></div></div><span style="font-size:12px;font-weight:600;color:'+(h.g==="S"?"#52c41a":h.g==="A"?"#1890ff":"#faad14")+';width:24px;text-align:right">'+h.g+'</span></div>'}).join("")
+  +'</div></div>'
+  +'<div class="card"><div class="card-title">'+(T?"能力声明":"Claims")+' <span style="font-size:11px;color:#999;font-weight:normal">('+e.claims.length+')</span></div><div style="margin-top:8px">'
+  +e.claims.map(function(c){return '<div class="claim-item" onclick="showModal(\''+(T?"能力声明":"Claim")+'\',\'<p style=font-size:13px;line-height:1.8>'+c.t+'</p><p style=margin-top:8px;font-size:11px;color:#999>'+(T?"领域":"Domain")+': '+c.d+' | '+(T?"类型":"Type")+': '+c.c+'</p>\')"><span class="claim-type '+c.c+'">'+c.c+'</span><span style="flex:1;font-size:12px">'+c.t+'</span></div>'}).join("")
+  +'</div></div></div><div>'
+  +'<div class="card"><div class="card-title">'+(T?"能力雷达":"Radar")+'</div><div class="radar-wrap">'+makeRadar(e.radar)+'</div></div>'
+  +'<div class="card"><div class="card-title">'+(T?"招聘匹配":"Match")+'</div><div style="margin-top:8px"><div class="score-row"><span class="score-label">'+(T?"综合":"Overall")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:'+(e.score/5*100)+'%;background:'+(e.score>=4?"#52c41a":e.score>=3?"#faad14":"#f5222d")+'"></div></div><span class="score-value" style="color:'+(e.score>=4?"#52c41a":e.score>=3?"#faad14":"#f5222d")+'">'+e.score+'/5</span></div></div></div></div></div>';
+}
+
+// Nine Grid
+function rReview(el){
+  var T=lang==="zh";
+  var g=[["待提升","待观察","待验证"],["基础合格","发展型","高潜人才"],["低绩效","待观察","核心骨干"]];
+  var names=[["","王五",""],["周八","","孙七\n郑十\n黄十三"],["赵六\n林十二","陈十一","张三\n李四\n吴九"]];
+  var colors=[["#fff7e6","#fffbe6","#fff7e6"],["#f5f5f5","#e6f7ff","#e6f7ff"],["#fff1f0","#fffbe6","#f6ffed"]];
+  var cols=[{zh:"能力低",en:"Low"},{zh:"能力中",en:"Med"},{zh:"能力高",en:"High"}];
+  var rows=[{zh:"绩效高",en:"High"},{zh:"绩效中",en:"Med"},{zh:"绩效低",en:"Low"}];
+
+  el.innerHTML='<div class="page-title">'+(T?"人才盘点 — 九宫格":"Talent Review — Nine Grid")+'</div>'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#722ed1"></span>'+(T?"绩效 × 能力矩阵":"Performance × Capability")+'</div></div>'
+  +'<div style="display:flex;gap:6px"><div style="width:36px;display:flex;flex-direction:column;justify-content:space-around;padding:8px 0">'
+  +[rows[2],rows[1],rows[0]].map(function(r){return '<div style="font-size:10px;color:#999;writing-mode:vertical-lr;text-align:center;height:72px;display:flex;align-items:center;justify-content:center">'+(T?r.zh:r.en)+'</div>'}).join("")
+  +'</div><div style="flex:1"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:4px">'+cols.map(function(c){return '<div style="text-align:center;font-size:10px;color:#999">'+(T?c.zh:c.en)+'</div>'}).join("")+'</div><div class="nine-grid">'
+  +g.flat().map(function(cell,i){var row=Math.floor(i/3),col=i%3;return '<div class="grid-cell" style="background:'+colors[row][col]+'"><div class="grid-label">'+cell+'</div><div class="grid-names">'+(names[row][col]||"—")+'</div></div>'}).join("")
+  +'</div></div></div></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+  +'<div class="card"><div class="card-title">'+(T?"分布统计":"Distribution")+'</div><div style="margin-top:8px">'
+  +GRID.map(function(c){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:2px;background:'+c.text+'"></div><span style="font-size:12px;width:60px;color:#666">'+c.name+'</span><div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+c.emp.length/3*100+'%;background:'+c.text+';border-radius:3px;opacity:.6"></div></div><span style="font-size:12px;color:'+c.text+';width:20px;text-align:right">'+c.emp.length+'</span></div>'}).join("")
+  +'</div></div>'
+  +'<div class="card"><div class="card-title">'+(T?"关键发现":"Findings")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
+  +'<div><span class="tag green">核心骨干 3人</span> — '+(T?"高绩效+高能力":"High perf+cap")+'</div>'
+  +'<div style="margin-top:6px"><span class="tag blue">高潜人才 3人</span> — '+(T?"优秀但有提升空间":"Good, room for growth")+'</div>'
+  +'<div style="margin-top:6px"><span class="tag red">低绩效 2人</span> — '+(T?"需改进计划或调岗":"Need plan or reassignment")+'</div></div></div></div>';
+}
+
+// Learning Insights — fixed with proper click interactions
+function rLearn(el){
+  var T=lang==="zh";
+  var suc=PATTERNS.filter(function(p){return p.type==="success"});
+  var fail=PATTERNS.filter(function(p){return p.type==="failure"});
+  el.innerHTML='<div class="page-title">'+(T?"学习洞察 — 系统从数据中学到了什么":"Learning Insights")+'</div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+(T?"成功模式":"Success Patterns")+'</div><span class="tag green">'+(T?"从高绩效提取":"From high performers")+'</span></div><div style="margin-top:8px">'
+  +suc.map(function(p,idx){return '<div class="pattern-card" onclick="showPatternModal('+idx+',\'success\')"><div class="pattern-type success">'+(T?"成功":"Success")+' · '+p.conf+'</div><div class="pattern-text">'+p.text+'</div><div class="pattern-meta">📊 '+p.ev.length+' '+(T?"个员工":"employees")+' — '+(T?"点击查看详情":"Click for details")+'</div></div>'}).join("")
+  +'</div></div>'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#f5222d"></span>'+(T?"失败模式":"Failure Patterns")+'</div><span class="tag red">'+(T?"从低绩效提取":"From low performers")+'</span></div><div style="margin-top:8px">'
+  +fail.map(function(p,idx){return '<div class="pattern-card failure" onclick="showPatternModal('+idx+',\'failure\')"><div class="pattern-type failure">'+(T?"失败":"Failure")+' · '+p.conf+'</div><div class="pattern-text">'+p.text+'</div><div class="pattern-meta">📊 '+p.ev.length+' '+(T?"个员工":"employees")+' — '+(T?"点击查看详情":"Click for details")+'</div></div>'}).join("")
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-title">'+(T?"学习闭环":"Learning Loop")+'</div><div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 0;flex-wrap:wrap">'
+  +["招聘入职","绩效评估","模式提取","优化招聘","评分提升"].map(function(s,i){return '<div style="background:'+["#e6f7ff","#f6ffed","#f9f0ff","#fff7e6","#e6f7ff"][i]+';padding:8px 14px;border-radius:6px;font-size:12px">'+s+'</div>'+(i<4?'<span style="color:#999">→</span>':'')}).join("")
+  +'</div></div>';
+}
+
+function showPatternModal(idx,type){
+  var T=lang==="zh";
+  var p=PATTERNS.filter(function(x){return x.type===type})[idx];
+  if(!p)return;
+  var html='<div style="margin-bottom:12px"><div class="pattern-type '+type+'" style="font-size:12px">'+(T?(type==="success"?"成功模式":"失败模式"):(type==="success"?"Success Pattern":"Failure Pattern"))+' · '+(T?"置信度":"Confidence")+' '+p.conf+'</div>'
+  +'<div style="font-size:13px;line-height:1.8;margin-top:8px">'+p.text+'</div></div>'
+  +'<div style="font-size:12px;color:#666;margin-bottom:12px;padding:10px;background:#fafafa;border-radius:6px">'+p.detail+'</div>'
+  +'<div style="font-size:12px;font-weight:600;color:#333;margin-bottom:8px">'+(T?"支撑员工":"Supporting Employees")+'</div>'
+  +p.ev.map(function(e){return '<div style="font-size:12px;color:#666;padding:6px 0;border-bottom:1px solid #f0f0f0">• '+e+'</div>'}).join("")
+  +'<div style="font-size:11px;color:#999;margin-top:8px">'+(T?"数据来源：人才盘点结果 + 绩效评估记录":"Source: Talent review + performance records")+'</div>';
+  showModal((T?(type==="success"?"成功模式详情":"失败模式详情"):(type==="success"?"Success Pattern":"Failure Pattern")),html);
+}
+
+// Recruitment Optimization — 3 candidate examples with tab switching
+var OPT_TAB=0;
+function rOpt(el){
+  var T=lang==="zh";
+  var tabs=[
+    {name:T?"刘强 — 大客户经理":"Liu Qiang — KAM",color:"#1890ff"},
+    {name:T?"陈芳 — 嵌入式工程师":"Chen Fang — Embedded Eng",color:"#52c41a"},
+    {name:T?"何伟 — 交付经理（风险）":"He Wei — Delivery Mgr (Risk)",color:"#f5222d"}
+  ];
+  el.innerHTML='<div class="page-title">'+(T?"招聘优化 — 学习结果的应用":"Recruitment Optimization")+'</div>'
+  +'<div style="display:flex;gap:6px;margin-bottom:16px">'+tabs.map(function(t,i){return '<div onclick="OPT_TAB='+i+';showPage(\'optimize\')" style="padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;transition:all .2s;background:'+(i===OPT_TAB?t.color:'#f0f0f0')+';color:'+(i===OPT_TAB?'#fff':'#666')+';font-weight:'+(i===OPT_TAB?'600':'400')+'">'+t.name+'</div>'}).join("")+'</div>'
+  +'<div id="opt-candidate"></div>';
+  [rOpt1,rOpt2,rOpt3][OPT_TAB](document.getElementById("opt-candidate"),T);
+}
+
+// Candidate 1: Liu Qiang — KAM (mixed signals)
+function rOpt1(el,T){
+  el.innerHTML='<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#1890ff"></span>'+(T?"候选人分析：刘强应聘 Key Account Manager":"Candidate: Liu Qiang for KAM")+'</div><span class="tag yellow">'+(T?"需深入面试":"Needs deep interview")+'</span></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"简历能力声明":"Resume Claims")+'</div>'
+  +'<div class="claim-item"><span class="claim-type leadership">leadership</span>'+(T?"从零搭建大客户管理团队，覆盖 KA/SKA 两层":"Built key account team, KA/SKA")+'</div>'
+  +'<div class="claim-item"><span class="claim-type sales">sales</span>'+(T?"季度业务回顾机制设计，客户留存率提升 18%":"QBR design, 18% retention")+'</div>'
+  +'<div class="claim-item"><span class="claim-type delivery">delivery</span>'+(T?"主导多个大型项目交付，按时交付率 95%":"Multiple projects, 95% on-time")+'</div>'
+  +'<div class="claim-item"><span class="claim-type domain">domain</span>'+(T?"客户生命周期价值分析与优化":"CLV analysis and optimization")+'</div>'
+  +'<div class="claim-item"><span class="claim-type project">project</span>'+(T?"主导多个项目（无具体数据）":"Led projects (no data)")+'</div>'
+  +'</div><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"AI 匹配分析":"AI Match Analysis")+'</div>'
+  +'<div class="score-row"><span class="score-label">'+(T?"基础匹配":"Base")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:60%;background:#faad14"></div></div><span class="score-value" style="color:#faad14">3.0</span></div>'
+  +'<div style="font-size:11px;color:#666;margin:6px 0">'
+  +'<div style="display:flex;align-items:center;gap:6px"><span style="color:#52c41a;font-weight:600">+0.5</span>'+(T?"成功模式：匹配张三「从零搭建大客户」模式":"Success: matches Zhang San's pattern")+'</div>'
+  +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span style="color:#f5222d;font-weight:600">-0.2</span>'+(T?"失败模式：无具体数据（赵六模式）":"Failure: no data (Zhao Liu pattern)")+'</div></div>'
+  +'<div class="score-row"><span class="score-label" style="font-weight:600">'+(T?"最终":"Final")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:66%;background:#1890ff"></div></div><span class="score-value" style="color:#1890ff;font-size:16px">3.3</span></div>'
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+(T?"匹配分析详解":"Match Analysis Detail")+'</div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">'
+  +'<div><div style="font-size:12px;font-weight:600;color:#52c41a;margin-bottom:8px">✅ '+(T?"成功模式匹配":"+0.5 Success Match")+'</div>'
+  +'<div class="ref-card"><div class="ref-title">张三 (S级) — '+(T?"核心骨干":"Core")+'</div><div class="ref-text">'+(T?"从零搭建大客户管理体系(90)、跨部门协调(88)、客户关系(88)":"Built KA system(90), cross-dept(88), client relations(88)")+'</div><div class="ref-text" style="margin-top:4px;color:#52c41a">'+(T?"刘强有「从零搭建大客户团队」经验，与张三高度重叠":"Liu Qiang built KA team — strong overlap with Zhang San")+'</div></div>'
+  +'<div class="ref-card"><div class="ref-title">吴九 (S级) — '+(T?"核心骨干":"Core")+'</div><div class="ref-text">'+(T?"车队销售签约(92)、融资谈判(85)、数据分析(82)":"Fleet sales(92), financing(85), data analysis(82)")+'</div><div class="ref-text" style="margin-top:4px;color:#52c41a">'+(T?"QBR 机制和 CLV 分析能力与吴九的客户管理能力互补":"QBR/CLV skills complement Wu Jiu's client mgmt")+'</div></div>'
+  +'</div><div><div style="font-size:12px;font-weight:600;color:#f5222d;margin-bottom:8px">❌ '+(T?"失败模式匹配":"-0.2 Failure Match")+'</div>'
+  +'<div class="ref-card"><div class="ref-title">赵六 (C级) — '+(T?"低绩效人才":"Low Perf.")+'</div><div class="ref-text">'+(T?"项目管理(60)、交付能力(55)、团队管理(45)":"PM(60), delivery(55), team mgmt(45)")+'</div><div class="ref-text" style="margin-top:4px;color:#f5222d">'+(T?"刘强声称「主导多个项目」但无具体数据，与赵六夸大描述模式一致":"Claims 'led projects' without data — matches Zhao Liu's pattern")+'</div></div>'
+  +'<div class="ref-card"><div class="ref-title">林十二 (C级) — '+(T?"低绩效人才":"Low Perf.")+'</div><div class="ref-text">'+(T?"项目管理(55)、跨部门协调(40)、领导力(42)":"PM(55), cross-dept(40), leadership(42)")+'</div><div class="ref-text" style="margin-top:4px;color:#f5222d">'+(T?"项目交付经验缺乏领导力维度验证，需追问协调案例":"Delivery experience lacks leadership verification — probe")+'</div></div>'
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-title"><span class="dot" style="background:#fa8c16"></span>'+(T?"面试建议":"Interview Suggestions")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
+  +'<div style="margin-bottom:6px">🎯 '+(T?"重点考察经销商管理经验（张三的弱项，刘强可能有优势）":"Focus on dealer mgmt (Zhang San's weakness)")+'</div>'
+  +'<div style="margin-bottom:6px">🔍 '+(T?"追问项目具体数据，验证「主导」声明的真实性":"Probe project data to verify 'led' claims")+'</div>'
+  +'<div style="margin-bottom:6px">⚠️ '+(T?"注意：Claims 中有「主导多个项目」但无具体数据，需追问细节":"'Led multiple projects' without data — probe details")+'</div>'
+  +'</div></div>';
+}
+
+// Candidate 2: Chen Fang — Embedded Engineer (strong match)
+function rOpt2(el,T){
+  el.innerHTML='<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+(T?"候选人分析：陈芳应聘嵌入式软件工程师":"Candidate: Chen Fang for Embedded Engineer")+'</div><span class="tag green">'+(T?"强烈推荐":"Strongly recommended")+'</span></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"简历能力声明":"Resume Claims")+'</div>'
+  +'<div class="claim-item"><span class="claim-type domain">domain</span>'+(T?"AUTOSAR Classic Platform 架构设计，主导 3 个 ECU 项目落地":"AUTOSAR Classic Platform architect, led 3 ECU projects")+'</div>'
+  +'<div class="claim-item"><span class="claim-type technical">technical</span>'+(T?"ISO 26262 功能安全认证（ASIL-D），独立完成 FMEA 分析":"ISO 26262 ASIL-D certification, independently completed FMEA")+'</div>'
+  +'<div class="claim-item"><span class="claim-type technical">technical</span>'+(T?"嵌入式 C/C++ 开发 8 年，精通 RTOS 和 CAN/LIN 协议":"8 years embedded C/C++, expert in RTOS and CAN/LIN")+'</div>'
+  +'<div class="claim-item"><span class="claim-type domain">domain</span>'+(T?"主导 AUTOSAR 工具链搭建，编译效率提升 40%":"Led AUTOSAR toolchain setup, 40% build efficiency gain")+'</div>'
+  +'<div class="claim-item"><span class="claim-type project">project</span>'+(T?"ADAS 域控制器软件集成，交付 3 款量产车型":"ADAS domain controller integration, 3 mass-production models")+'</div>'
+  +'</div><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"AI 匹配分析":"AI Match Analysis")+'</div>'
+  +'<div class="score-row"><span class="score-label">'+(T?"基础匹配":"Base")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:70%;background:#faad14"></div></div><span class="score-value" style="color:#faad14">3.5</span></div>'
+  +'<div style="font-size:11px;color:#666;margin:6px 0">'
+  +'<div style="display:flex;align-items:center;gap:6px"><span style="color:#52c41a;font-weight:600">+0.5</span>'+(T?"成功模式：匹配郑十「AUTOSAR+功能安全」双能力模式":"Success: matches Zheng Shi's AUTOSAR+FunctionalSafety pattern")+'</div>'
+  +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span style="color:#52c41a;font-weight:600">+0.2</span>'+(T?"数据支撑：所有 Claims 均有量化数据（40%、3款、8年）":"Data-backed: all claims have quantified metrics")+'</div></div>'
+  +'<div class="score-row"><span class="score-label" style="font-weight:600">'+(T?"最终":"Final")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:84%;background:#52c41a"></div></div><span class="score-value" style="color:#52c41a;font-size:16px">4.2</span></div>'
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+(T?"匹配分析详解":"Match Analysis Detail")+'</div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">'
+  +'<div><div style="font-size:12px;font-weight:600;color:#52c41a;margin-bottom:8px">✅ '+(T?"成功模式匹配":"+0.7 Success Match")+'</div>'
+  +'<div class="ref-card"><div class="ref-title">郑十 (A级) — '+(T?"高潜人才":"High Pot.")+'</div><div class="ref-text">'+(T?"嵌入式开发(88)、AUTOSAR(82)、功能安全(80)、代码质量(85)":"Embedded(88), AUTOSAR(82), FuncSafety(80), CodeQuality(85)")+'</div><div class="ref-text" style="margin-top:4px;color:#52c41a">'+(T?"陈芳的 AUTOSAR 架构+功能安全双能力与郑十高度匹配，且有量产经验":"Chen Fang's AUTOSAR+FuncSafety matches Zheng Shi, plus mass-production exp")+'</div></div>'
+  +'<div class="ref-card"><div class="ref-title">'+(T?"数据支撑证据":"Data-Backed Evidence")+'</div><div class="ref-text">'+(T?"「编译效率提升 40%」— 可量化成果":"'40% build efficiency gain' — quantified")+'</div><div class="ref-text" style="margin-top:2px">'+(T?"「交付 3 款量产车型」— 具体交付物":"'3 mass-production models' — concrete deliverable")+'</div><div class="ref-text" style="margin-top:2px">'+(T?"「8 年嵌入式 C/C++」— 可验证资历":"'8 years embedded C/C++' — verifiable tenure")+'</div></div>'
+  +'</div><div><div style="font-size:12px;font-weight:600;color:#999;margin-bottom:8px">ℹ️ '+(T?"无失败模式匹配":"No Failure Pattern Match")+'</div>'
+  +'<div class="ref-card"><div class="ref-title">'+(T?"对比赵六/林十二（低绩效）":"vs Zhao Liu/Lin Shier (Low Perf.)")+'</div><div class="ref-text">'+(T?"赵六的问题是「声称主导但无数据」，陈芳每条 Claim 都有具体数字":"Zhao Liu claimed leadership without data; Chen Fang has numbers for every claim")+'</div><div class="ref-text" style="margin-top:4px;color:#52c41a">'+(T?"陈芳的 Claims 结构与低绩效员工完全不同，无风险信号":"Chen Fang's claims structure is completely different from low performers — no risk signals")+'</div></div>'
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-title"><span class="dot" style="background:#722ed1"></span>'+(T?"参考数据：同类岗位对比":"Reference: Peer Comparison")+'</div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">'
+  +'<div class="ref-card"><div class="ref-title">'+(T?"嵌入式岗位平均招聘分数":"Avg Embedded Eng Score")+'</div><div class="ref-text"><span style="font-size:24px;font-weight:600;color:#1890ff">3.4</span> <span style="font-size:12px;color:#999">'+(T?"分（陈芳 4.2 分高于平均 0.8 分）":"pts (Chen Fang 4.2 is +0.8 above avg)")+'</span></div></div>'
+  +'<div class="ref-card"><div class="ref-title">'+(T?"同类岗位高绩效比例":"Embedded High-Perf Ratio")+'</div><div class="ref-text"><span style="font-size:24px;font-weight:600;color:#52c41a">71%</span> <span style="font-size:12px;color:#999">'+(T?"招聘分数≥4 的嵌入式员工中 71% 达到 S/A 绩效":"71% of Embedded with score≥4 reached S/A grade")+'</span></div></div>'
+  +'<div class="ref-card"><div class="ref-title">'+(T?"学习引擎预测置信度":"Prediction Confidence")+'</div><div class="ref-text"><span style="font-size:24px;font-weight:600;color:#722ed1">0.86</span> <span style="font-size:12px;color:#999">'+(T?"高置信度（成功模式强匹配+无失败信号）":"High confidence (strong success match + no failure signal)")+'</span></div></div>'
+  +'<div class="ref-card"><div class="ref-title">'+(T?"建议面试轮次":"Suggested Rounds")+'</div><div class="ref-text"><span style="font-size:24px;font-weight:600;color:#fa8c16">1</span> <span style="font-size:12px;color:#999">'+(T?"轮（分数≥4 且无失败信号，一轮技术面即可）":"round (score≥4 with no failure signal, 1 tech round sufficient)")+'</span></div></div>'
+  +'</div></div>'
+  +'<div class="card"><div class="card-title"><span class="dot" style="background:#fa8c16"></span>'+(T?"面试建议":"Interview Suggestions")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
+  +'<div style="margin-bottom:6px">🎯 '+(T?"验证 AUTOSAR 工具链搭建细节（编译效率 40% 如何测量）":"Verify AUTOSAR toolchain details (how was 40% measured)")+'</div>'
+  +'<div style="margin-bottom:6px">🔍 '+(T?"追问 ADAS 域控制器集成中遇到的最大技术挑战":"Probe biggest technical challenge in ADAS integration")+'</div>'
+  +'<div style="margin-bottom:6px">💡 '+(T?"陈芳的量化 Claims 质量很高，面试重点放在深度验证而非发现风险":"High-quality quantified claims — focus interview on depth verification, not risk discovery")+'</div>'
+  +'</div></div>';
+}
+
+// Candidate 3: He Wei — Delivery Manager (red flag)
+function rOpt3(el,T){
+  el.innerHTML='<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#f5222d"></span>'+(T?"候选人分析：何伟应聘交付运营经理":"Candidate: He Wei for Delivery Ops Manager")+'</div><span class="tag red">'+(T?"高风险，建议淘汰":"High risk, recommend reject")+'</span></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"简历能力声明":"Resume Claims")+'</div>'
+  +'<div class="claim-item"><span class="claim-type leadership">leadership</span>'+(T?"主导多个大型项目交付，管理跨部门团队":"Led multiple large projects, managed cross-dept teams")+'</div>'
+  +'<div class="claim-item"><span class="claim-type project">project</span>'+(T?"负责多个项目的整体推进和落地":"Drove multiple projects end-to-end")+'</div>'
+  +'<div class="claim-item"><span class="claim-type delivery">delivery</span>'+(T?"具备丰富的项目管理经验":"Extensive project management experience")+'</div>'
+  +'<div class="claim-item"><span class="claim-type domain">domain</span>'+(T?"熟悉汽车行业交付流程":"Familiar with auto industry delivery process")+'</div>'
+  +'</div><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"AI 匹配分析":"AI Match Analysis")+'</div>'
+  +'<div class="score-row"><span class="score-label">'+(T?"基础匹配":"Base")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:50%;background:#faad14"></div></div><span class="score-value" style="color:#faad14">2.5</span></div>'
+  +'<div style="font-size:11px;color:#666;margin:6px 0">'
+  +'<div style="display:flex;align-items:center;gap:6px"><span style="color:#999;font-weight:600">+0</span>'+(T?"无成功模式匹配（无量化数据、无具体成果）":"No success pattern (no metrics, no concrete results)")+'</div>'
+  +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span style="color:#f5222d;font-weight:600">-0.5</span>'+(T?"失败模式：高度匹配赵六+林十二的「模糊 Claims」模式":"Failure: strongly matches Zhao Liu + Lin Shier's vague claims pattern")+'</div></div>'
+  +'<div class="score-row"><span class="score-label" style="font-weight:600">'+(T?"最终":"Final")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:40%;background:#f5222d"></div></div><span class="score-value" style="color:#f5222d;font-size:16px">2.0</span></div>'
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-title"><span class="dot" style="background:#f5222d"></span>'+(T?"匹配分析详解":"Match Analysis Detail")+'</div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">'
+  +'<div><div style="font-size:12px;font-weight:600;color:#999;margin-bottom:8px">ℹ️ '+(T?"无成功模式匹配":"No Success Pattern")+'</div>'
+  +'<div class="ref-card"><div class="ref-title">'+(T?"对比张三（S级核心骨干）":"vs Zhang San (S Core)")+'</div><div class="ref-text">'+(T?"张三：「从零搭建大客户管理体系，覆盖 KA/SKA/National Account 三层，管理 15 人团队，年度 GMV 2.8 亿」":"Zhang San: 'Built KA system covering KA/SKA/National Account, managed 15-person team, 280M GMV/year'")+'</div><div class="ref-text" style="margin-top:4px;color:#f5222d">'+(T?"何伟：「主导多个大型项目」— 无规模、无数据、无具体成果":"He Wei: 'Led multiple large projects' — no scale, no data, no results")+'</div></div>'
+  +'</div><div><div style="font-size:12px;font-weight:600;color:#f5222d;margin-bottom:8px">❌ '+(T?"失败模式强匹配":"-0.5 Strong Failure Match")+'</div>'
+  +'<div class="ref-card"><div class="ref-title">赵六 (C级) — '+(T?"低绩效人才":"Low Perf.")+'</div><div class="ref-text">'+(T?"面试声称「主导多个大型项目交付」，入职后发现只是参与者":"Claimed 'led multiple projects' at interview, turned out to be just a participant")+'</div><div class="ref-text" style="margin-top:4px;color:#f5222d">'+(T?"何伟的 Claims 与赵六面试时的表述几乎一致":"'Led multiple projects' — nearly identical to Zhao Liu\'s interview claims")+'</div></div>'
+  +'<div class="ref-card"><div class="ref-title">林十二 (C级) — '+(T?"低绩效人才":"Low Perf.")+'</div><div class="ref-text">'+(T?"声称「跨部门项目协调」但实际无法推动，领导力仅 42 分":"Claimed cross-dept coordination but couldn\'t deliver, leadership only 42")+'</div><div class="ref-text" style="margin-top:4px;color:#f5222d">'+(T?"何伟的「管理跨部门团队」同样缺乏领导力维度的支撑":"'Managed cross-dept teams' also lacks leadership dimension support")+'</div></div>'
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-title"><span class="dot" style="background:#722ed1"></span>'+(T?"风险分析":"Risk Analysis")+'</div>'
+  +'<div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
+  +'<div style="padding:10px;background:#fff1f0;border-radius:6px;border-left:3px solid #f5222d;margin-bottom:8px"><b>'+(T?"风险 1：模糊 Claims 模式":"Risk 1: Vague Claims Pattern")+'</b><br>'+(T?"4 条 Claims 全部无量化数据，与赵六、林十二的面试表现高度一致。系统从 2 个低绩效员工身上学到了这个模式。":"All 4 claims have zero quantified data, matching Zhao Liu and Lin Shier's interview pattern. System learned this from 2 low-performers.")+'</div>'
+  +'<div style="padding:10px;background:#fff1f0;border-radius:6px;border-left:3px solid #f5222d;margin-bottom:8px"><b>'+(T?"风险 2：领导力信号缺失":"Risk 2: Missing Leadership Signal")+'</b><br>'+(T?"声称「管理跨部门团队」但无团队规模、无协调案例、无冲突解决描述。林十二同样的 Claims 入职后领导力仅 42 分。":"'Managed cross-dept teams' but no team size, no coordination case, no conflict resolution. Lin Shier had same claims → leadership only 42 after hire.")+'</div>'
+  +'<div style="padding:10px;background:#fff7e6;border-radius:6px;border-left:3px solid #faad14"><b>'+(T?"风险 3：高绩效预测概率仅 18%":"Risk 3: High-Perf Probability Only 18%")+'</b><br>'+(T?"基于学习引擎，招聘分数 2.0 的交付岗位员工仅 18% 达到 S/A 绩效，52% 为 C 级。":"Based on learning engine, only 18% of delivery hires with score 2.0 reached S/A, 52% were C grade.")+'</div>'
+  +'</div></div>'
+  +'<div class="card"><div class="card-title"><span class="dot" style="background:#fa8c16"></span>'+(T?"建议":"Recommendation")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
+  +'<div style="padding:10px;background:#fff1f0;border-radius:6px;margin-bottom:8px"><b>🚫 '+(T?"建议淘汰，不进入面试环节":"Recommend reject, skip interview")+'</b><br>'+(T?"系统从张三（S级）和赵六（C级）的对比中学到：无量化数据的 Claims 是低绩效的强预测信号。何伟的 4 条 Claims 全部符合这一失败模式。":"System learned from Zhang San (S) vs Zhao Liu (C): claims without quantified data are a strong predictor of low performance. All 4 of He Wei's claims match this failure pattern.")+'</div>'
+  +'<div style="font-size:11px;color:#999;margin-top:4px">💡 '+(T?"如果业务部门坚持要面试，建议追问：1) 具体管理多少人的团队？2) 最近一个项目的按时交付率是多少？3) 跨部门协调中遇到的最大阻力及如何解决？":"If business insists on interview, probe: 1) exact team size? 2) on-time delivery rate of recent project? 3) biggest cross-dept obstacle and how resolved?")+'</div>'
+  +'</div></div>';
+}
+
+// SVG Radar
+function makeRadar(obj){
+  var keys=Object.keys(obj),vals=Object.values(obj),n=keys.length;
+  var cx=130,cy=120,r=90;
+  var pts=[];
+  for(var i=0;i<n;i++){var a=Math.PI*2*i/n-Math.PI/2;pts.push({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)})}
+  var svg='<svg viewBox="0 0 260 240" width="260" height="240">';
+  for(var j=1;j<=4;j++){svg+='<polygon points="'+pts.map(function(p){return (cx+(p.x-cx)*j/4)+','+(cy+(p.y-cy)*j/4)}).join(' ')+'" fill="none" stroke="#e8e8e8" stroke-width="0.5"/>'}
+  svg+='<polygon points="'+pts.map(function(p){return p.x+','+p.y}).join(' ')+'" fill="none" stroke="#e8e8e8" stroke-width="1"/>';
+  var dataPoly=pts.map(function(p,i){return (cx+r*(vals[i]/100)*Math.cos(Math.PI*2*i/n-Math.PI/2))+','+(cy+r*(vals[i]/100)*Math.sin(Math.PI*2*i/n-Math.PI/2))}).join(' ');
+  svg+='<polygon points="'+dataPoly+'" fill="rgba(24,144,255,0.15)" stroke="#1890ff" stroke-width="1.5"/>';
+  pts.forEach(function(p,i){
+    var lx=p.x+(p.x-cx)*0.18,ly=p.y+(p.y-cy)*0.18;
+    svg+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p.x+'" y2="'+p.y+'" stroke="#e8e8e8" stroke-width="0.5"/>';
+    svg+='<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="10" fill="#999">'+keys[i]+'</text>';
+    svg+='<circle cx="'+(cx+r*(vals[i]/100)*Math.cos(Math.PI*2*i/n-Math.PI/2))+'" cy="'+(cy+r*(vals[i]/100)*Math.sin(Math.PI*2*i/n-Math.PI/2))+'" r="3" fill="#1890ff"/>';
+  });
+  svg+='</svg>';
+  return svg;
+}
+
+// Init
+showPage("dashboard");
+</script>
+</body>
+</html>
