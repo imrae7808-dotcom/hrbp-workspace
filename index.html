@@ -95,9 +95,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 select.form-input{appearance:auto}
 .search-bar{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
 .search-bar input{flex:1;min-width:200px}
-.filter-chip{padding:4px 10px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #d9d9d9;background:#fff;color:#666;transition:all .2s}
-.filter-chip:hover{border-color:#1890ff;color:#1890ff}
-.filter-chip.active{background:#e6f7ff;border-color:#1890ff;color:#1890ff}
 .emp-row{display:flex;align-items:center;gap:12px;padding:10px;border-bottom:1px solid #f0f0f0;cursor:pointer;transition:background .2s}
 .emp-row:hover{background:#fafafa}
 .emp-row.dragging{opacity:.4;background:#f0f5ff}
@@ -150,7 +147,7 @@ select.form-input{appearance:auto}
 </div>
 <div id="modal-container"></div>
 <script>
-// ==================== DATA LAYER ====================
+// ==================== DATA ====================
 var DEFAULT_EMP=[
  {id:"001",name:"张三",pos:"Key Account Manager",dept:"Sales",lv:"senior",hire:"2025-11",score:5,perf:"S",grid:"核心骨干",
   perfH:[{p:"2025H2",g:"A"},{p:"2026H1",g:"S"}],
@@ -197,97 +194,127 @@ var DEFAULT_EMP=[
   claims:[{t:"门店运营效率提升 15%",c:"domain",d:"StoreOpsManagement"},{t:"零售绩效管理体系搭建",c:"domain",d:"StorePerformanceMgmt"},{t:"门店客户体验优化",c:"domain",d:"StoreCustomerExperience"}],
   radar:{门店运营:85,绩效管理:80,客户体验:82,数据分析:75,团队管理:70}}
 ];
-
 var DEFAULT_PATTERNS=[
-  {type:"success",text:"具备'从零搭建大客户体系'经验的候选人，在 KAM 岗位上高绩效概率 78%",conf:.85,
-   ev:["张三 (S级)：从零搭建大客户管理体系，管理 15 人团队","吴九 (S级)：企业车队销售签约 50+ 家，类似大客户管理经验"],
-   detail:"张三的'从零搭建'经历与 KAM 岗位核心能力高度匹配，吴九的车队销售签约经验证明了类似的大客户管理能力。"},
-  {type:"success",text:"车队销售签约经验与 FleetSales 岗位高绩效强相关",conf:.88,
-   ev:["吴九 (S级)：年度签约 50+ 家，融资方案设计"],
-   detail:"吴九的签约量远超岗位要求，融资谈判能力是额外加分项。"},
-  {type:"success",text:"有具体数据支撑的 Claims 与高绩效强相关（r=0.81）",conf:.82,
-   ev:["张三：留存率提升 23%","李四：网络评估模型","孙七：数字营销策略","吴九：签约 50+ 家"],
-   detail:"高绩效员工的 Claims 中都包含可量化的数据，而非模糊的描述。"},
-  {type:"failure",text:"面试中声称'主导'但无法提供具体数据，低绩效概率 65%",conf:.72,
-   ev:["赵六 (C级)：声称'主导多个大型项目交付'但无法提供数据","林十二 (C级)：声称'跨部门项目协调'但实际无法推动"],
-   detail:"赵六面试时声称主导项目，但入职后发现只是参与者；林十二技术强但无法推动跨部门协作。"},
-  {type:"failure",text:"技术能力强但领导力 Claims 缺失，PM 岗位低绩效概率 58%",conf:.68,
-   ev:["林十二 (C级)：技术能力 78 分但领导力仅 42 分"],
-   detail:"林十二技术架构设计能力优秀，但缺乏推动跨部门协作的软技能，导致项目无法推进。"}
+  {type:"success",text:"具备'从零搭建大客户体系'经验的候选人，在 KAM 岗位上高绩效概率 78%",conf:.85, ev:["张三 (S级)：从零搭建大客户管理体系，管理 15 人团队","吴九 (S级)：企业车队销售签约 50+ 家，类似大客户管理经验"], detail:"张三的'从零搭建'经历与 KAM 岗位核心能力高度匹配。"},
+  {type:"success",text:"车队销售签约经验与 FleetSales 岗位高绩效强相关",conf:.88, ev:["吴九 (S级)：年度签约 50+ 家，融资方案设计"], detail:"吴九的签约量远超岗位要求。"},
+  {type:"success",text:"有具体数据支撑的 Claims 与高绩效强相关（r=0.81）",conf:.82, ev:["张三：留存率提升 23%","李四：网络评估模型","吴九：签约 50+ 家"], detail:"高绩效员工的 Claims 中都包含可量化的数据。"},
+  {type:"failure",text:"面试中声称'主导'但无法提供具体数据，低绩效概率 65%",conf:.72, ev:["赵六 (C级)：声称'主导多个大型项目交付'但无法提供数据","林十二 (C级)：声称'跨部门项目协调'但实际无法推动"], detail:"无量化数据的 Claims 是低绩效的强预测信号。"},
+  {type:"failure",text:"技术能力强但领导力 Claims 缺失，PM 岗位低绩效概率 58%",conf:.68, ev:["林十二 (C级)：技术能力 78 分但领导力仅 42 分"], detail:"缺乏推动跨部门协作的软技能。"}
 ];
 
-// ===== localStorage =====
+// ==================== STORAGE ====================
+var EMP=[], PATTERNS=[];
 function loadData(){
   try{var e=localStorage.getItem('hrbp_emp');EMP=e?JSON.parse(e):JSON.parse(JSON.stringify(DEFAULT_EMP))}catch(x){EMP=JSON.parse(JSON.stringify(DEFAULT_EMP))}
   try{var p=localStorage.getItem('hrbp_patterns');PATTERNS=p?JSON.parse(p):JSON.parse(JSON.stringify(DEFAULT_PATTERNS))}catch(x){PATTERNS=JSON.parse(JSON.stringify(DEFAULT_PATTERNS))}
 }
 function saveData(){localStorage.setItem('hrbp_emp',JSON.stringify(EMP));localStorage.setItem('hrbp_patterns',JSON.stringify(PATTERNS))}
-function resetData(){localStorage.removeItem('hrbp_emp');localStorage.removeItem('hrbp_patterns');loadData();showToast(lang==='zh'?'数据已重置':'Data reset','info')}
-
-var EMP=[],PATTERNS=[];
+function resetData(){localStorage.removeItem('hrbp_emp');localStorage.removeItem('hrbp_patterns');loadData();showToast('数据已重置','info');renderPage()}
 loadData();
 
-// ===== Utils =====
-var lang="zh",currentPage="dashboard",selEmp=EMP[0];
+// ==================== GLOBALS ====================
+var lang="zh", currentPage="dashboard", selEmp=null, empView="list", empFilter={search:'',dept:'',perf:''};
+var OPT_TAB=0;
+
+// ==================== UTILS ====================
 function genId(){return String(Date.now()).slice(-6)+String(Math.floor(Math.random()*1000))}
-function setLang(l){lang=l;document.querySelectorAll(".lang-btn").forEach(function(b){b.classList.toggle("active",b.textContent.trim()===(l==="zh"?"中文":"EN"))});showPage(currentPage)}
+function T(zh,en){return lang==="zh"?zh:(en||zh)}
+function setLang(l){lang=l;document.querySelectorAll(".lang-btn").forEach(function(b){b.classList.toggle("active",b.textContent.trim()===(l==="zh"?"中文":"EN"))});renderPage()}
 function showToast(msg,type){var t=document.createElement('div');t.className='toast '+(type||'success');t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.remove()},2500)}
 function showModal(title,body){document.getElementById("modal-container").innerHTML='<div class="modal-overlay" onclick="if(event.target===this)this.remove()"><div class="modal"><div class="modal-title">'+title+'<span class="modal-close" onclick="this.closest(\'.modal-overlay\').remove()">×</span></div>'+body+'</div></div>'}
 function closeModal(){var m=document.querySelector('.modal-overlay');if(m)m.remove()}
-function showPage(p){currentPage=p;document.querySelectorAll(".nav-item").forEach(function(n){n.classList.toggle("active",n.dataset.page===p)});var el=document.getElementById("page-content");
-  ({dashboard:rDash,employee:rEmp,review:rReview,learning:rLearn,optimize:rOpt})[p](el);}
+function showPage(p){currentPage=p;empView="list";selEmp=null;document.querySelectorAll(".nav-item").forEach(function(n){n.classList.toggle("active",n.dataset.page===p)});renderPage()}
+function renderPage(){var el=document.getElementById("page-content");({dashboard:renderDashboard,employee:renderEmployee,review:renderReview,learning:renderLearning,optimize:renderOptimize})[currentPage](el)}
+function getGrid(score,perf){
+  if(perf==="S")return"核心骨干";if(perf==="A")return"高潜人才";
+  if(perf==="B+"||perf==="B")return"待观察人才";if(perf==="C")return"低绩效人才";
+  return"基础合格人才";
+}
 
 // ==================== EMPLOYEE CRUD ====================
-function getGrid(score,perf){
-  if(perf==="S"||perf==="A"&&score>=4) return "核心骨干";
-  if(perf==="A"||perf==="B+"&&score>=4) return "高潜人才";
-  if(perf==="B"||perf==="B+") return "待观察人才";
-  if(perf==="C") return "低绩效人才";
-  return "基础合格人才";
+function addEmployee(d){d.id=genId();d.grid=getGrid(d.score,d.perf);d.perfH=[];d.claims=[];d.radar={};EMP.push(d);saveData();showToast(T('员工已添加'));closeModal();renderPage()}
+function updateEmployee(id,d){var idx=EMP.findIndex(function(e){return e.id===id});if(idx<0)return;d.grid=getGrid(d.score,d.perf);Object.assign(EMP[idx],d);saveData();showToast(T('员工已更新'));closeModal();renderPage()}
+function deleteEmployee(id){if(!confirm(T('确定删除该员工？')))return;EMP=EMP.filter(function(e){return e.id!==id});saveData();showToast(T('员工已删除'));renderPage()}
+function addClaim(empId,claim){var e=EMP.find(function(x){return x.id===empId});if(!e)return;e.claims.push(claim);saveData();showToast(T('能力声明已添加'));closeModal();renderPage()}
+function removeClaim(empId,idx){var e=EMP.find(function(x){return x.id===empId});if(!e)return;e.claims.splice(idx,1);saveData();showToast(T('能力声明已删除'));renderPage()}
+function addPerfRecord(empId,record){var e=EMP.find(function(x){return x.id===empId});if(!e)return;e.perfH.push(record);e.perf=record.g;e.grid=getGrid(e.score,record.g);saveData();showToast(T('绩效已更新'));closeModal();renderPage()}
+function updateRadar(empId,radar){var e=EMP.find(function(x){return x.id===empId});if(!e)return;e.radar=radar;saveData();showToast(T('能力雷达已更新'));closeModal();renderPage()}
+function addPattern(p){p.conf=parseFloat(p.conf)||0.7;p.ev=p.ev||[];PATTERNS.push(p);saveData();showToast(T('模式已添加'));closeModal();renderPage()}
+function deletePattern(idx){if(!confirm(T('确定删除该模式？')))return;PATTERNS.splice(idx,1);saveData();showToast(T('模式已删除'));renderPage()}
+
+// ==================== FORMS ====================
+function empFormHTML(e,isEdit){
+  var v=function(k){return e&&e[k]!=null?e[k]:''};
+  return '<form onsubmit="event.preventDefault();'+(isEdit?"updateEmployee('"+e.id+"',formData(this))":"addEmployee(formData(this))")+'">'
+  +'<div class="form-row"><div class="form-group"><label class="form-label">'+T("姓名*","Name*")+'</label><input class="form-input" name="name" value="'+v('name')+'" required></div>'
+  +'<div class="form-group"><label class="form-label">'+T("岗位*","Position*")+'</label><input class="form-input" name="pos" value="'+v('pos')+'" required></div></div>'
+  +'<div class="form-row"><div class="form-group"><label class="form-label">'+T("部门*","Dept*")+'</label><input class="form-input" name="dept" value="'+v('dept')+'" required></div>'
+  +'<div class="form-group"><label class="form-label">'+T("资历","Level")+'</label><select class="form-input" name="lv"><option value="junior"'+(v('lv')==="junior"?" selected":"")+'>Junior</option><option value="mid"'+(v('lv')==="mid"?" selected":"")+'>Mid</option><option value="senior"'+(v('lv')==="senior"?" selected":"")+'>Senior</option><option value="principal"'+(v('lv')==="principal"?" selected":"")+'>Principal</option></select></div></div>'
+  +'<div class="form-row"><div class="form-group"><label class="form-label">'+T("入职时间","Hire Date")+'</label><input class="form-input" type="month" name="hire" value="'+v('hire')+'"></div>'
+  +'<div class="form-group"><label class="form-label">'+T("招聘分数 (1-5)","Score (1-5)")+'</label><input class="form-input" type="number" name="score" min="1" max="5" value="'+(v('score')||3)+'"></div></div>'
+  +'<div class="form-group"><label class="form-label">'+T("绩效等级","Perf Grade")+'</label><select class="form-input" name="perf"><option value="S"'+(v('perf')==="S"?" selected":"")+'>S</option><option value="A"'+(v('perf')==="A"?" selected":"")+'>A</option><option value="B+"'+(v('perf')==="B+"?" selected":"")+'>B+</option><option value="B"'+(v('perf')==="B"?" selected":"")+'>B</option><option value="C"'+(v('perf')==="C"?" selected":"")+'>C</option></select></div>'
+  +'<div style="text-align:right;margin-top:16px"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+T("取消")+'</button><button type="submit" class="btn btn-primary">'+(isEdit?T("保存"):T("添加"))+'</button></div></form>';
 }
-function addEmployee(d){
-  d.id=genId();d.grid=getGrid(d.score,d.perf);d.perfH=[];d.claims=[];d.radar={};
-  EMP.push(d);saveData();showToast(lang==='zh'?'员工已添加':'Employee added');closeModal();showPage(currentPage);
+function formData(form){var d={};var fd=new FormData(form);fd.forEach(function(v,k){d[k]=v});d.score=parseInt(d.score)||3;return d}
+function claimFormHTML(empId){
+  return '<form onsubmit="event.preventDefault();addClaim(\''+empId+'\',{t:this.t.value,c:this.c.value,d:this.d.value})">'
+  +'<div class="form-group"><label class="form-label">'+T("能力描述*")+'</label><textarea class="form-input" name="t" rows="3" required style="resize:vertical"></textarea></div>'
+  +'<div class="form-row"><div class="form-group"><label class="form-label">'+T("类型")+'</label><select class="form-input" name="c"><option value="leadership">Leadership</option><option value="sales">Sales</option><option value="delivery">Delivery</option><option value="domain">Domain</option><option value="customer">Customer</option><option value="project">Project</option><option value="technical">Technical</option></select></div>'
+  +'<div class="form-group"><label class="form-label">'+T("领域")+'</label><input class="form-input" name="d" placeholder="e.g. KeyAccountManagement"></div></div>'
+  +'<div style="text-align:right;margin-top:12px"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+T("取消")+'</button><button type="submit" class="btn btn-primary">'+T("添加")+'</button></div></form>';
 }
-function updateEmployee(id,d){
-  var idx=EMP.findIndex(function(e){return e.id===id});if(idx<0)return;
-  d.grid=getGrid(d.score,d.perf);Object.assign(EMP[idx],d);saveData();
-  showToast(lang==='zh'?'员工已更新':'Employee updated');closeModal();showPage(currentPage);
+function perfFormHTML(empId){
+  return '<form onsubmit="event.preventDefault();addPerfRecord(\''+empId+'\',{p:this.p.value,g:this.g.value})">'
+  +'<div class="form-row"><div class="form-group"><label class="form-label">'+T("考核周期")+'</label><input class="form-input" name="p" placeholder="e.g. 2026H2" required></div>'
+  +'<div class="form-group"><label class="form-label">'+T("等级")+'</label><select class="form-input" name="g"><option>S</option><option>A</option><option>B+</option><option>B</option><option>C</option></select></div></div>'
+  +'<div style="text-align:right;margin-top:12px"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+T("取消")+'</button><button type="submit" class="btn btn-primary">'+T("添加")+'</button></div></form>';
 }
-function deleteEmployee(id){
-  if(!confirm(lang==='zh'?'确定删除该员工？':'Delete this employee?'))return;
-  EMP=EMP.filter(function(e){return e.id!==id});saveData();
-  showToast(lang==='zh'?'员工已删除':'Employee deleted');showPage(currentPage);
+var _radarFieldIdx=0;
+function radarFormHTML(empId){
+  var e=EMP.find(function(x){return x.id===empId});if(!e)return'';
+  var r=e.radar||{};var keys=Object.keys(r);_radarFieldIdx=keys.length;
+  var html='<form onsubmit="event.preventDefault();doSaveRadar(\''+empId+'\',this)">'
+  +'<div id="radar-fields">';
+  keys.forEach(function(k,i){
+    html+='<div class="form-row" style="margin-bottom:8px"><div class="form-group"><input class="form-input" name="rk'+i+'" value="'+k+'"></div>'
+    +'<div class="form-group"><input class="form-input" type="number" name="rv'+i+'" value="'+r[k]+'" min="0" max="100"></div></div>';
+  });
+  html+='</div>'
+  +'<button type="button" class="btn btn-ghost btn-sm" onclick="addRadarField()">+ '+T("添加维度")+'</button>'
+  +'<div style="text-align:right"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+T("取消")+'</button><button type="submit" class="btn btn-primary">'+T("保存")+'</button></div></form>';
+  return html;
 }
-function addClaim(empId,claim){
-  var e=EMP.find(function(x){return x.id===empId});if(!e)return;
-  e.claims.push(claim);saveData();showToast(lang==='zh'?'能力声明已添加':'Claim added');closeModal();
+function addRadarField(){
+  var i=_radarFieldIdx++;
+  var div=document.getElementById('radar-fields');if(!div)return;
+  var row=document.createElement('div');row.className='form-row';row.style.marginBottom='8px';
+  row.innerHTML='<div class="form-group"><input class="form-input" name="rk'+i+'" placeholder="'+T("维度名")+'"></div><div class="form-group"><input class="form-input" type="number" name="rv'+i+'" min="0" max="100" placeholder="0-100"></div>';
+  div.appendChild(row);
 }
-function removeClaim(empId,idx){
-  var e=EMP.find(function(x){return x.id===empId});if(!e)return;
-  e.claims.splice(idx,1);saveData();showToast(lang==='zh'?'能力声明已删除':'Claim removed');
+function doSaveRadar(empId,form){
+  var radar={};var fd=new FormData(form);
+  for(var pair of fd.entries()){
+    var k=pair[0],v=pair[1];
+    if(k.startsWith('rk')){var idx=k.slice(2);var name=fd.get('rk'+idx);var val=parseInt(fd.get('rv'+idx))||0;if(name&&name.trim())radar[name.trim()]=val}
+  }
+  updateRadar(empId,radar);
 }
-function addPerfRecord(empId,record){
-  var e=EMP.find(function(x){return x.id===empId});if(!e)return;
-  e.perfH.push(record);e.perf=record.g;e.grid=getGrid(e.score,record.g);saveData();
-  showToast(lang==='zh'?'绩效已更新':'Performance updated');closeModal();
-}
-function updateRadar(empId,radar){
-  var e=EMP.find(function(x){return x.id===empId});if(!e)return;
-  e.radar=radar;saveData();showToast(lang==='zh'?'能力雷达已更新':'Radar updated');closeModal();
+function patternFormHTML(){
+  return '<form onsubmit="event.preventDefault();addPattern({type:this.type.value,text:this.text.value,conf:this.conf.value,detail:this.detail.value})">'
+  +'<div class="form-row"><div class="form-group"><label class="form-label">'+T("类型*")+'</label><select class="form-input" name="type"><option value="success">'+T("成功模式")+'</option><option value="failure">'+T("失败模式")+'</option></select></div>'
+  +'<div class="form-group"><label class="form-label">'+T("置信度")+'</label><input class="form-input" type="number" name="conf" min="0" max="1" step="0.01" value="0.75"></div></div>'
+  +'<div class="form-group"><label class="form-label">'+T("模式描述*")+'</label><textarea class="form-input" name="text" rows="2" required style="resize:vertical"></textarea></div>'
+  +'<div class="form-group"><label class="form-label">'+T("详细说明")+'</label><textarea class="form-input" name="detail" rows="2" style="resize:vertical"></textarea></div>'
+  +'<div style="text-align:right;margin-top:12px"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+T("取消")+'</button><button type="submit" class="btn btn-primary">'+T("添加")+'</button></div></form>';
 }
 
-// ===== Pattern CRUD =====
-function addPattern(p){p.conf=parseFloat(p.conf)||0.7;PATTERNS.push(p);saveData();showToast(lang==='zh'?'模式已添加':'Pattern added');closeModal();showPage(currentPage)}
-function deletePattern(idx){if(!confirm(lang==='zh'?'确定删除该模式？':'Delete this pattern?'))return;PATTERNS.splice(idx,1);saveData();showToast(lang==='zh'?'模式已删除':'Pattern deleted');showPage(currentPage)}
-
-// ===== Import/Export =====
+// ==================== IMPORT/EXPORT ====================
 function exportCSV(){
   var header="ID,姓名,岗位,部门,资历,入职时间,招聘分数,绩效等级,九宫格分类\n";
   var rows=EMP.map(function(e){return [e.id,e.name,e.pos,e.dept,e.lv,e.hire,e.score,e.perf,e.grid].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
-  var bom='﻿';var blob=new Blob([bom+header+rows],{type:'text/csv;charset=utf-8'});
+  var blob=new Blob(['﻿'+header+rows],{type:'text/csv;charset=utf-8'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hrbp_employees.csv';a.click();
-  showToast(lang==='zh'?'导出成功':'Exported');
+  showToast(T('导出成功'));
 }
 function importCSV(){
   var input=document.createElement('input');input.type='file';input.accept='.csv';
@@ -295,18 +322,16 @@ function importCSV(){
     var file=e.target.files[0];if(!file)return;
     var reader=new FileReader();
     reader.onload=function(ev){
-      var text=ev.target.result;var lines=text.split('\n').filter(function(l){return l.trim()});
-      var imported=0;
+      var text=ev.target.result;var lines=text.split('\n').filter(function(l){return l.trim()});var imported=0;
       for(var i=1;i<lines.length;i++){
-        var cols=lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
-        if(!cols||cols.length<5)continue;
+        var cols=lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);if(!cols||cols.length<5)continue;
         var clean=function(s){return s.replace(/^"|"$/g,'').trim()};
         var d={name:clean(cols[1]),pos:clean(cols[2]),dept:clean(cols[3]),lv:clean(cols[4]),
           hire:cols[5]?clean(cols[5]):'',score:parseInt(cols[6])||3,perf:cols[7]?clean(cols[7]):'B'};
         if(!d.name)continue;d.id=genId();d.grid=getGrid(d.score,d.perf);d.perfH=[];d.claims=[];d.radar={};
         EMP.push(d);imported++;
       }
-      saveData();showToast((lang==='zh'?'导入成功，新增 ':'Imported ')+imported+(lang==='zh'?' 人':' employees'));closeModal();showPage(currentPage);
+      saveData();showToast(T('导入成功，新增 ')+imported+T(' 人'));closeModal();renderPage();
     };
     reader.readAsText(file);
   };input.click();
@@ -315,7 +340,7 @@ function exportJSON(){
   var data={employees:EMP,patterns:PATTERNS,exportDate:new Date().toISOString()};
   var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hrbp_backup.json';a.click();
-  showToast(lang==='zh'?'备份已导出':'Backup exported');
+  showToast(T('备份已导出'));
 }
 function importJSON(){
   var input=document.createElement('input');input.type='file';input.accept='.json';
@@ -323,181 +348,14 @@ function importJSON(){
     var file=e.target.files[0];if(!file)return;
     var reader=new FileReader();
     reader.onload=function(ev){
-      try{
-        var data=JSON.parse(ev.target.result);
-        if(data.employees){EMP=data.employees;localStorage.setItem('hrbp_emp',JSON.stringify(EMP))}
-        if(data.patterns){PATTERNS=data.patterns;localStorage.setItem('hrbp_patterns',JSON.stringify(PATTERNS))}
-        showToast(lang==='zh'?'恢复成功':'Restored');closeModal();showPage(currentPage);
-      }catch(x){showToast(lang==='zh'?'文件格式错误':'Invalid file','error')}
+      try{var data=JSON.parse(ev.target.result);if(data.employees){EMP=data.employees;saveData()}if(data.patterns){PATTERNS=data.patterns;saveData()}showToast(T('恢复成功'));closeModal();renderPage()}
+      catch(x){showToast(T('文件格式错误'),'error')}
     };
     reader.readAsText(file);
   };input.click();
 }
 
-// ==================== EMPLOYEE FORM ====================
-function empFormHTML(e,isEdit){
-  var T=lang==="zh";
-  var v=function(k){return e&&e[k]!=null?e[k]:''};
-  return '<form onsubmit="event.preventDefault();'+(isEdit?"updateEmployee('"+e.id+"',formToData(this))":"addEmployee(formToData(this))")+'">'
-  +'<div class="form-row"><div class="form-group"><label class="form-label">'+(T?"姓名*":"Name*")+'</label><input class="form-input" name="name" value="'+v('name')+'" required></div>'
-  +'<div class="form-group"><label class="form-label">'+(T?"岗位*":"Position*")+'</label><input class="form-input" name="pos" value="'+v('pos')+'" required></div></div>'
-  +'<div class="form-row"><div class="form-group"><label class="form-label">'+(T?"部门*":"Dept*")+'</label><input class="form-input" name="dept" value="'+v('dept')+'" required></div>'
-  +'<div class="form-group"><label class="form-label">'+(T?"资历":"Level")+'</label><select class="form-input" name="lv"><option value="junior"'+(v('lv')==="junior"?" selected":"")+'>Junior</option><option value="mid"'+(v('lv')==="mid"?" selected":"")+'>Mid</option><option value="senior"'+(v('lv')==="senior"?" selected":"")+'>Senior</option><option value="principal"'+(v('lv')==="principal"?" selected":"")+'>Principal</option></select></div></div>'
-  +'<div class="form-row"><div class="form-group"><label class="form-label">'+(T?"入职时间":"Hire Date")+'</label><input class="form-input" type="month" name="hire" value="'+v('hire')+'"></div>'
-  +'<div class="form-group"><label class="form-label">'+(T?"招聘分数 (1-5)":"Score (1-5)")+'</label><input class="form-input" type="number" name="score" min="1" max="5" value="'+(v('score')||3)+'"></div></div>'
-  +'<div class="form-group"><label class="form-label">'+(T?"绩效等级":"Perf Grade")+'</label><select class="form-input" name="perf"><option value="S"'+(v('perf')==="S"?" selected":"")+'>S</option><option value="A"'+(v('perf')==="A"?" selected":"")+'>A</option><option value="B+"'+(v('perf')==="B+"?" selected":"")+'>B+</option><option value="B"'+(v('perf')==="B"?" selected":"")+'>B</option><option value="C"'+(v('perf')==="C"?" selected":"")+'>C</option></select></div>'
-  +'<div style="text-align:right;margin-top:16px"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+(T?"取消":"Cancel")+'</button><button type="submit" class="btn btn-primary">'+(isEdit?(T?"保存":"Save"):(T?"添加":"Add"))+'</button></div></form>';
-}
-function formToData(form){
-  var d={};var fd=new FormData(form);
-  fd.forEach(function(v,k){d[k]=v});d.score=parseInt(d.score)||3;return d;
-}
-
-// ===== Claim Form =====
-function claimFormHTML(empId){
-  var T=lang==="zh";
-  return '<form onsubmit="event.preventDefault();addClaim(\''+empId+'\',{t:this.t.value,c:this.c.value,d:this.d.value})">'
-  +'<div class="form-group"><label class="form-label">'+(T?"能力描述*":"Claim*")+'</label><textarea class="form-input" name="t" rows="3" required style="resize:vertical"></textarea></div>'
-  +'<div class="form-row"><div class="form-group"><label class="form-label">'+(T?"类型":"Type")+'</label><select class="form-input" name="c"><option value="leadership">Leadership</option><option value="sales">Sales</option><option value="delivery">Delivery</option><option value="domain">Domain</option><option value="customer">Customer</option><option value="project">Project</option><option value="technical">Technical</option></select></div>'
-  +'<div class="form-group"><label class="form-label">'+(T?"领域":"Domain")+'</label><input class="form-input" name="d" placeholder="e.g. KeyAccountManagement"></div></div>'
-  +'<div style="text-align:right;margin-top:12px"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+(T?"取消":"Cancel")+'</button><button type="submit" class="btn btn-primary">'+(T?"添加":"Add")+'</button></div></form>';
-}
-
-// ===== Performance Form =====
-function perfFormHTML(empId){
-  var T=lang==="zh";
-  return '<form onsubmit="event.preventDefault();addPerfRecord(\''+empId+'\',{p:this.p.value,g:this.g.value})">'
-  +'<div class="form-row"><div class="form-group"><label class="form-label">'+(T?"考核周期":"Period")+'</label><input class="form-input" name="p" placeholder="e.g. 2026H2" required></div>'
-  +'<div class="form-group"><label class="form-label">'+(T":"等级":"Grade")+'</label><select class="form-input" name="g"><option>S</option><option>A</option><option>B+</option><option>B</option><option>C</option></select></div></div>'
-  +'<div style="text-align:right;margin-top:12px"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+(T?"取消":"Cancel")+'</button><button type="submit" class="btn btn-primary">'+(T?"添加":"Add")+'</button></div></form>';
-}
-
-// ===== Radar Form =====
-function radarFormHTML(empId){
-  var e=EMP.find(function(x){return x.id===empId});if(!e)return'';
-  var T=lang==="zh";var r=e.radar||{};var keys=Object.keys(r);
-  var html='<form onsubmit="event.preventDefault();saveRadar(\''+empId+'\',this)">'
-  +'<div id="radar-fields">';
-  keys.forEach(function(k,i){
-    html+='<div class="form-row" style="margin-bottom:8px"><div class="form-group"><input class="form-input" name="rk'+i+'" value="'+k+'" placeholder="'+(T?"维度名":"Dimension")+'"></div>'
-    +'<div class="form-group"><input class="form-input" type="number" name="rv'+i+'" value="'+r[k]+'" min="0" max="100" placeholder="0-100"></div></div>';
-  });
-  html+='</div>'
-  +'<button type="button" class="btn btn-ghost btn-sm" onclick="addRadarField()" style="margin-bottom:12px">+ '+(T?"添加维度":"Add Dimension")+'</button>'
-  +'<div style="text-align:right"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+(T?"取消":"Cancel")+'</button><button type="submit" class="btn btn-primary">'+(T?"保存":"Save")+'</button></div></form>';
-  return html;
-}
-var radarFieldCount=0;
-function addRadarField(){
-  var T=lang==="zh";radarFieldCount++;
-  var div=document.getElementById('radar-fields');
-  var row=document.createElement('div');row.className='form-row';row.style.marginBottom='8px';
-  row.innerHTML='<div class="form-group"><input class="form-input" name="rk'+radarFieldCount+'" placeholder="'+(T?"维度名":"Dimension")+'"></div>'
-    +'<div class="form-group"><input class="form-input" type="number" name="rv'+radarFieldCount+'" min="0" max="100" placeholder="0-100"></div>';
-  div.appendChild(row);
-}
-function saveRadar(empId,form){
-  var radar={};var fd=new FormData(form);
-  for(var k of fd.keys()){
-    if(k.startsWith('rk')){
-      var idx=k.slice(2);var name=fd.get('rk'+idx);var val=parseInt(fd.get('rv'+idx))||0;
-      if(name.trim())radar[name.trim()]=val;
-    }
-  }
-  updateRadar(empId,radar);
-}
-
-// ===== Pattern Form =====
-function patternFormHTML(){
-  var T=lang==="zh";
-  return '<form onsubmit="event.preventDefault();addPattern({type:this.type.value,text:this.text.value,conf:this.conf.value,detail:this.detail.value,ev:[],T:lang})">'
-  +'<div class="form-row"><div class="form-group"><label class="form-label">'+(T?"类型*":"Type*")+'</label><select class="form-input" name="type"><option value="success">'+(T?"成功模式":"Success")+'</option><option value="failure">'+(T?"失败模式":"Failure")+'</option></select></div>'
-  +'<div class="form-group"><label class="form-label">'+(T?"置信度":"Confidence")+'</label><input class="form-input" type="number" name="conf" min="0" max="1" step="0.01" value="0.75"></div></div>'
-  +'<div class="form-group"><label class="form-label">'+(T?"模式描述*":"Description*")+'</label><textarea class="form-input" name="text" rows="2" required style="resize:vertical"></textarea></div>'
-  +'<div class="form-group"><label class="form-label">'+(T?"详细说明":"Detail")+'</label><textarea class="form-input" name="detail" rows="2" style="resize:vertical"></textarea></div>'
-  +'<div style="text-align:right;margin-top:12px"><button type="button" class="btn btn-ghost" onclick="closeModal()" style="margin-right:8px">'+(T?"取消":"Cancel")+'</button><button type="submit" class="btn btn-primary">'+(T?"添加":"Add")+'</button></div></form>';
-}
-
-// ==================== PAGES ====================
-// Dashboard
-function rDash(el){
-  var T=lang==="zh";
-  var core=EMP.filter(function(e){return e.grid==="核心骨干"});
-  var high=EMP.filter(function(e){return e.grid==="高潜人才"});
-  var low=EMP.filter(function(e){return e.grid==="低绩效人才"});
-  var deptMap={};EMP.forEach(function(e){deptMap[e.dept]=(deptMap[e.dept]||0)+1});
-
-  el.innerHTML='<div class="page-title">'+(T?"工作台":"Dashboard")+'</div>'
-  +'<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
-  +'<button class="btn btn-primary btn-sm" onclick="showModal(\''+(T?"新增员工":"Add Employee")+'\',empFormHTML(null,false))">+ '+(T?"新增员工":"Add")+'</button>'
-  +'<button class="btn btn-ghost btn-sm" onclick="exportCSV()">📤 CSV</button>'
-  +'<button class="btn btn-ghost btn-sm" onclick="importCSV()">📥 CSV</button>'
-  +'<button class="btn btn-ghost btn-sm" onclick="exportJSON()">📤 JSON</button>'
-  +'<button class="btn btn-ghost btn-sm" onclick="importJSON()">📥 JSON</button>'
-  +'<button class="btn btn-ghost btn-sm" onclick="resetData()">🔄 '+(T?"重置":"Reset")+'</button>'
-  +'</div>'
-  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#1890ff"></span>'+(T?"人才概览":"Talent Overview")+'</div></div>'
-  +'<div class="stats-grid">'
-  +'<div class="stat-card"><div class="stat-value">'+EMP.length+'</div><div class="stat-label">'+(T?"员工":"Employees")+'</div></div>'
-  +'<div class="stat-card"><div class="stat-value" style="color:#52c41a">'+core.length+'</div><div class="stat-label">'+(T?"核心骨干":"Core")+'</div></div>'
-  +'<div class="stat-card"><div class="stat-value" style="color:#1890ff">'+high.length+'</div><div class="stat-label">'+(T?"高潜":"High Pot.")+'</div></div>'
-  +'<div class="stat-card"><div class="stat-value" style="color:#f5222d">'+low.length+'</div><div class="stat-label">'+(T?"低绩效":"Low Perf.")+'</div></div>'
-  +'<div class="stat-card"><div class="stat-value">'+PATTERNS.length+'</div><div class="stat-label">'+(T?"学习模式":"Patterns")+'</div></div>'
-  +'<div class="stat-card"><div class="stat-value">'+Object.keys(deptMap).length+'</div><div class="stat-label">'+(T?"部门数":"Depts")+'</div></div>'
-  +'</div></div>'
-  +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">'
-  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#1890ff"></span>'+(T?"部门分布":"By Department")+'</div></div>'
-  +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+Object.keys(deptMap).map(function(d){
-    var pct=Math.round(deptMap[d]/EMP.length*100);
-    return '<div style="background:#f0f5ff;padding:8px 14px;border-radius:6px;text-align:center;min-width:80px"><div style="font-size:20px;font-weight:600;color:#1890ff">'+deptMap[d]+'</div><div style="font-size:11px;color:#666">'+d+'</div><div style="font-size:10px;color:#999">'+pct+'%</div></div>'}).join("")+'</div></div>'
-  +'<div class="card"><div class="card-title">'+(T?"快捷操作":"Quick Actions")+'</div><div style="margin-top:8px;display:grid;gap:6px">'
-  +'<button class="btn btn-primary" onclick="showPage(\'employee\')" style="width:100%">'+(T?"查看全部员工":"View All")+'</button>'
-  +'<button class="btn btn-ghost" onclick="showPage(\'review\')" style="width:100%">'+(T?"人才盘点":"Talent Review")+'</button>'
-  +'<button class="btn btn-ghost" onclick="showPage(\'learning\')" style="width:100%">'+(T?"学习洞察":"Insights")+'</button>'
-  +'</div></div></div>'
-  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+(T?"核心骨干":"Core Backbone")+'</div></div>'
-  +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+core.map(function(e){return '<div class="claim-item" onclick="selEmp=EMP.find(function(x){return x.id===\''+e.id+'\'});showPage(\'employee\')" style="flex:1;min-width:180px"><div class="emp-avatar" style="background:#e6f7ff;color:#1890ff">'+e.name[0]+'</div><div class="emp-info"><div class="emp-name">'+e.name+'</div><div class="emp-pos">'+e.pos+'</div></div><span class="tag green">S</span></div>'}).join("")+'</div></div>';
-}
-
-// Employee List with Search/Filter
-var empFilter={search:'',dept:'',perf:''};
-function rEmp(el){
-  var T=lang==="zh";
-  var depts=[];EMP.forEach(function(e){if(depts.indexOf(e.dept)===-1)depts.push(e.dept)});
-
-  var filtered=EMP.filter(function(e){
-    if(empFilter.search&&e.name.indexOf(empFilter.search)===-1&&e.pos.toLowerCase().indexOf(empFilter.search.toLowerCase())===-1)return false;
-    if(empFilter.dept&&e.dept!==empFilter.dept)return false;
-    if(empFilter.perf&&e.perf!==empFilter.perf)return false;
-    return true;
-  });
-
-  var html='<div class="page-title">'+(T?"员工档案":"Employees")+'<button class="btn btn-primary btn-sm" onclick="showModal(\''+(T?"新增员工":"Add Employee")+'\',empFormHTML(null,false))">+ '+(T?"新增":"Add")+'</button></div>'
-  +'<div class="card"><div class="search-bar">'
-  +'<input class="form-input" placeholder="'+(T?"搜索姓名/岗位...":"Search name/position...")+'" value="'+empFilter.search+'" oninput="empFilter.search=this.value;rEmp(document.getElementById(\'page-content\'))">'
-  +'<select class="form-input" style="width:120px" onchange="empFilter.dept=this.value;rEmp(document.getElementById(\'page-content\'))"><option value="">'+(T?"全部部门":"All Depts")+'</option>'+depts.map(function(d){return '<option value="'+d+'"'+(empFilter.dept===d?' selected':'')+'>'+d+'</option>'}).join("")+'</select>'
-  +'<select class="form-input" style="width:120px" onchange="empFilter.perf=this.value;rEmp(document.getElementById(\'page-content\'))"><option value="">'+(T?"全部绩效":"All Perf")+'</option><option value="S"'+(empFilter.perf==='S'?' selected':'')+'>S</option><option value="A"'+(empFilter.perf==='A'?' selected':'')+'>A</option><option value="B+"'+(empFilter.perf==='B+'?' selected':'')+'>B+</option><option value="B"'+(empFilter.perf==='B'?' selected':'')+'>B</option><option value="C"'+(empFilter.perf==='C'?' selected':'')+'>C</option></select>'
-  +'<span style="font-size:12px;color:#999">'+filtered.length+'/'+EMP.length+'</span>'
-  +'</div>';
-  html+='<div style="max-height:calc(100vh - 240px);overflow-y:auto">';
-  filtered.forEach(function(e){
-    var pc=e.perf==="S"?"#52c41a":e.perf==="A"?"#1890ff":e.perf==="B+"?"#faad14":"#f5222d";
-    var bgc=e.perf==="S"?"#f6ffed":e.perf==="A"?"#e6f7ff":e.perf==="B+"?"#fffbe6":"#fff1f0";
-    html+='<div class="emp-row" draggable="true" data-id="'+e.id+'" ondragstart="onDragStart(event)" ondragend="onDragEnd(event)">'
-    +'<div class="emp-avatar" style="background:'+bgc+';color:'+pc+'">'+e.name[0]+'</div>'
-    +'<div class="emp-info"><div class="emp-name">'+e.name+' <span class="tag" style="background:'+bgc+';color:'+pc+'">'+e.perf+'</span></div>'
-    +'<div class="emp-pos">'+e.pos+' · '+e.dept+' · '+e.grid+'</div></div>'
-    +'<div class="emp-actions">'
-    +'<button class="btn btn-ghost btn-sm" onclick="selEmp=EMP.find(function(x){return x.id===\''+e.id+'\'});showPage(\'employee\');event.stopPropagation()">'+(T?"查看":"View")+'</button>'
-    +'<button class="btn btn-ghost btn-sm" onclick="showModal(\''+(T?"编辑":"Edit")+'\',empFormHTML(EMP.find(function(x){return x.id===\''+e.id+'\'}),true));event.stopPropagation()">'+(T?"编辑":"Edit")+'</button>'
-    +'<button class="btn btn-danger btn-sm" onclick="deleteEmployee(\''+e.id+'\');event.stopPropagation()">✕</button>'
-    +'</div></div>';
-  });
-  html+='</div></div>';
-  el.innerHTML=html;
-}
-
-// ===== Drag & Drop =====
+// ==================== DRAG & DROP ====================
 var dragEmpId=null;
 function onDragStart(e){dragEmpId=e.currentTarget.dataset.id;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
 function onDragEnd(e){e.currentTarget.classList.remove('dragging');dragEmpId=null;document.querySelectorAll('.grid-cell').forEach(function(c){c.classList.remove('drag-over')})}
@@ -510,252 +368,239 @@ function onGridDrop(e,gridName){
   if(!emp)return;
   var perfMap={"核心骨干":"S","高潜人才":"A","待观察人才":"B","低绩效人才":"C","基础合格人才":"B+"};
   emp.grid=gridName;emp.perf=perfMap[gridName]||emp.perf;
-  saveData();showToast(emp.name+(lang==='zh'?' 已移至 ':' moved to ')+gridName);showPage(currentPage);
+  saveData();showToast(emp.name+T(' 已移至 ')+gridName);renderPage();
 }
 
-// Nine Grid Review
-function rReview(el){
-  var T=lang==="zh";
-  var g=[["待提升","待观察","待验证"],["基础合格","发展型","高潜人才"],["低绩效","待观察","核心骨干"]];
-  var names=[["","",""],["","",""],["","",""]];
-  EMP.forEach(function(e){
-    var row=-1,col=-1;
-    for(var r=0;r<3;r++)for(var c=0;c<3;c++){
-      if(g[r][c]===e.grid||g[r][c]==="待观察"&&e.grid==="待观察人才"||g[r][c]==="待提升"&&e.grid==="低绩效人才"||g[r][c]==="待验证"&&e.grid==="高潜人才"){
-        // simplified mapping
-      }
-    }
-  });
-  // Build grid from actual data
-  var gridMap={"低绩效人才":[],"待观察人才":[],"基础合格人才":[],"高潜人才":[],"核心骨干":[]};
-  EMP.forEach(function(e){if(gridMap[e.grid])gridMap[e.grid].push(e.name)});
+// ==================== VIEW EMPLOYEE DETAIL ====================
+function viewEmp(id){selEmp=EMP.find(function(e){return e.id===id});empView="detail";renderPage()}
 
-  var g2=[["低绩效人才","待观察人才","基础合格人才"],["待观察人才","高潜人才","核心骨干"]];
-  var gNames=[[gridMap["低绩效人才"],gridMap["待观察人才"],gridMap["基础合格人才"]],[gridMap["待观察人才"]||gridMap["基础合格人才"],gridMap["高潜人才"],gridMap["核心骨干"]]];
-  // Use actual 3x3 layout
-  var cells=[
-    {name:"低绩效",color:"#fff1f0",text:"#f5222d",items:gridMap["低绩效人才"]},
-    {name:"待观察",color:"#fffbe6",text:"#faad14",items:gridMap["待观察人才"]},
-    {name:"基础合格",color:"#f5f5f5",text:"#999",items:gridMap["基础合格人才"]},
-    {name:"待提升",color:"#fff7e6",text:"#fa8c16",items:[]},
-    {name:"待发展",color:"#e6f7ff",text:"#1890ff",items:[]},
-    {name:"高潜人才",color:"#e6f7ff",text:"#1890ff",items:gridMap["高潜人才"]},
-    {name:"低潜力",color:"#fff1f0",text:"#f5222d",items:[]},
-    {name:"成长型",color:"#fffbe6",text:"#faad14",items:[]},
-    {name:"核心骨干",color:"#f6ffed",text:"#52c41a",items:gridMap["核心骨干"]}
-  ];
-
-  el.innerHTML='<div class="page-title">'+(T?"人才盘点 — 九宫格":"Talent Review — Nine Grid")+'</div>'
-  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#722ed1"></span>'+(T?"绩效 × 能力矩阵 — 拖拽员工调整分类":"Performance × Capability — Drag to reclassify")+'</div></div>'
-  +'<div class="nine-grid">'
-  +cells.map(function(c){
-    return '<div class="grid-cell" style="background:'+c.color+'" ondragover="onGridDragOver(event)" ondragleave="onGridDragLeave(event)" ondrop="onGridDrop(event,\''+c.name+'人才\')">'
-    +'<div class="grid-label" style="color:'+c.text+'">'+c.name+'</div>'
-    +'<div class="grid-names" style="color:'+c.text+'">'+(c.items.length?c.items.join("\n"):"—")+'</div></div>'}).join("")
-  +'</div></div>'
-  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-  +'<div class="card"><div class="card-title">'+(T?"分布统计":"Distribution")+'</div><div style="margin-top:8px">'
-  +cells.filter(function(c){return c.items.length>0}).map(function(c){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:2px;background:'+c.text+'"></div><span style="font-size:12px;width:80px;color:#666">'+c.name+'</span><div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.round(c.items.length/EMP.length*100)+'%;background:'+c.text+';border-radius:3px;opacity:.6"></div></div><span style="font-size:12px;color:'+c.text+';width:20px;text-align:right">'+c.items.length+'</span></div>'}).join("")
-  +'</div></div>'
-  +'<div class="card"><div class="card-title">'+(T?"关键发现":"Findings")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
-  +'<div><span class="tag green">'+T?'核心骨干':'Core'+' '+gridMap["核心骨干"].length+'人</span></div>'
-  +'<div style="margin-top:6px"><span class="tag blue">'+T?'高潜人才':'High Pot.'+' '+gridMap["高潜人才"].length+'人</span></div>'
-  +'<div style="margin-top:6px"><span class="tag red">'+T?'低绩效':'Low Perf.'+' '+gridMap["低绩效人才"].length+'人</span></div>'
-  +'</div></div></div>';
-}
-
-// Employee Detail
-function rEmp_detail(el){
-  var T=lang==="zh",e=selEmp;if(!e){el.innerHTML='<div class="page-title">'+(T?"请选择员工":"Select an employee")+'</div>';return}
-  var pc=e.perf==="S"?"#52c41a":e.perf==="A"?"#1890ff":e.perf==="B+"?"#faad14":"#f5222d";
-  el.innerHTML='<div class="page-title">'+(T?"员工档案":"Employee")+'<div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="showPage(\'employee\')">← '+(T?"返回":"Back")+'</button><button class="btn btn-primary btn-sm" onclick="showModal(\''+(T?"编辑":"Edit")+'\',empFormHTML(selEmp,true))">'+(T?"编辑":"Edit")+'</button></div></div>'
-  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div>'
-  +'<div class="card"><div class="card-title">'+(T?"基本信息":"Info")+'</div><div style="margin-top:8px;font-size:13px;line-height:2;color:#666">'
-  +'<div><b>'+(T?"姓名":"Name")+'：</b> '+e.name+'</div>'
-  +'<div><b>'+(T?"岗位":"Position")+'：</b> '+e.pos+'</div>'
-  +'<div><b>'+(T?"部门":"Dept")+'：</b> '+e.dept+'</div>'
-  +'<div><b>'+(T?"资历":"Level")+'：</b> '+e.lv+'</div>'
-  +'<div><b>'+(T?"入职":"Hire")+'：</b> '+e.hire+'</div>'
-  +'<div><b>'+(T?"招聘分数":"Score")+'：</b> <span style="color:'+(e.score>=4?"#52c41a":e.score>=3?"#faad14":"#f5222d")+';font-weight:600">'+e.score+' '+(e.score>=5?T?"卓越":"Outstanding":e.score>=4?T?"优秀":"Excellent":T?"合格":"Pass")+'</span></div>'
-  +'<div><b>'+(T?"绩效":"Perf")+'：</b> <span style="color:'+pc+';font-weight:600">'+e.perf+'</span> — '+e.grid+'</div></div></div>'
-  +'<div class="card"><div class="card-header"><div class="card-title">'+(T?"绩效历史":"Perf History")+'</div><span class="card-link" onclick="showModal(\''+(T?"新增绩效":"Add Perf")+'\',perfFormHTML(\''+e.id+'\'))">+ '+(T?"新增":"Add")+'</span></div><div style="margin-top:8px">'
-  +(e.perfH.length?e.perfH.map(function(h){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:12px;color:#666;width:56px">'+h.p+'</span><div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+(h.g==="S"?100:h.g==="A"?85:h.g==="B+"?70:h.g==="B"?55:35)+'%;background:'+(h.g==="S"?"#52c41a":h.g==="A"?"#1890ff":h.g==="B+"?"#faad14":"#f5222d")+';border-radius:3px"></div></div><span style="font-size:12px;font-weight:600;color:'+(h.g==="S"?"#52c41a":h.g==="A"?"#1890ff":"#faad14")+';width:24px;text-align:right">'+h.g+'</span></div>'}).join(""):'<p style="color:#999;font-size:12px">'+(T?"暂无绩效记录":"No records")+'</p>')
-  +'</div></div>'
-  +'<div class="card"><div class="card-header"><div class="card-title">'+(T?"能力声明":"Claims")+' <span style="font-size:11px;color:#999;font-weight:normal">('+e.claims.length+')</span></div><span class="card-link" onclick="showModal(\''+(T?"新增能力声明":"Add Claim")+'\',claimFormHTML(\''+e.id+'\'))">+ '+(T?"新增":"Add")+'</span></div><div style="margin-top:8px">'
-  +(e.claims.length?e.claims.map(function(c,i){return '<div class="claim-item"><span class="claim-type '+c.c+'">'+c.c+'</span><span style="flex:1;font-size:12px">'+c.t+'</span><span style="color:#f5222d;cursor:pointer;font-size:11px" onclick="removeClaim(\''+e.id+'\','+i+')">✕</span></div>'}).join(""):'<p style="color:#999;font-size:12px">'+(T?"暂无能力声明":"No claims")+'</p>')
-  +'</div></div></div><div>'
-  +'<div class="card"><div class="card-header"><div class="card-title">'+(T?"能力雷达":"Radar")+'</div><span class="card-link" onclick="radarFieldCount=Object.keys(selEmp.radar||{}).length;showModal(\''+(T?"编辑雷达":"Edit Radar")+'\',radarFormHTML(\''+e.id+'\'))">'+(T?"编辑":"Edit")+'</span></div><div class="radar-wrap">'+makeRadar(e.radar||{})+'</div></div>'
-  +'<div class="card"><div class="card-title">'+(T?"招聘匹配":"Match")+'</div><div style="margin-top:8px"><div class="score-row"><span class="score-label">'+(T?"综合":"Overall")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:'+(e.score/5*100)+'%;background:'+(e.score>=4?"#52c41a":e.score>=3?"#faad14":"#f5222d")+'"></div></div><span class="score-value" style="color:'+(e.score>=4?"#52c41a":e.score>=3?"#faad14":"#f5222d")+'">'+e.score+'/5</span></div></div></div></div></div>';
-}
-
-// Override rEmp to support both list and detail
-var _rEmpList=rEmp;
-rEmp=function(el){
-  if(selEmp&&currentPage==='employee'&&!el.querySelector('.emp-row')){
-    // Check if we're on detail view
-  }
-  if(selEmp&&document.querySelector('.page-title')&&document.querySelector('.page-title').textContent.indexOf(selEmp.name)>-1){
-    rEmp_detail(el);return;
-  }
-  // Default to list view - unless we just set selEmp and want detail
-  rEmp_detail(el);
-};
-
-// ===== Learning Insights =====
-function rLearn(el){
-  var T=lang==="zh";
-  var suc=PATTERNS.filter(function(p){return p.type==="success"});
-  var fail=PATTERNS.filter(function(p){return p.type==="failure"});
-  el.innerHTML='<div class="page-title">'+(T?"学习洞察 — 系统从数据中学到了什么":"Learning Insights")+'<button class="btn btn-primary btn-sm" onclick="showModal(\''+(T?"新增模式":"Add Pattern")+'\',patternFormHTML())">+ '+(T?"新增模式":"Add Pattern")+'</button></div>'
-  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
-  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+(T?"成功模式":"Success Patterns")+'</div><span class="tag green">'+suc.length+(T?"个":"")+'</span></div><div style="margin-top:8px">'
-  +suc.map(function(p){var idx=PATTERNS.indexOf(p);return '<div class="pattern-card" onclick="showPatternModal('+idx+',\'success\')"><div class="pattern-type success">'+(T?"成功":"Success")+' · '+p.conf+'</div><div class="pattern-text">'+p.text+'</div><div class="pattern-meta">📊 '+p.ev.length+' '+(T?"个员工":"employees")+' <span style="color:#f5222d;cursor:pointer;float:right" onclick="deletePattern('+idx+');event.stopPropagation()">✕</span></div></div>'}).join("")
-  +'</div></div>'
-  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#f5222d"></span>'+(T?"失败模式":"Failure Patterns")+'</div><span class="tag red">'+fail.length+(T?"个":"")+'</span></div><div style="margin-top:8px">'
-  +fail.map(function(p){var idx=PATTERNS.indexOf(p);return '<div class="pattern-card failure" onclick="showPatternModal('+idx+',\'failure\')"><div class="pattern-type failure">'+(T?"失败":"Failure")+' · '+p.conf+'</div><div class="pattern-text">'+p.text+'</div><div class="pattern-meta">📊 '+p.ev.length+' '+(T?"个员工":"employees")+' <span style="color:#f5222d;cursor:pointer;float:right" onclick="deletePattern('+idx+');event.stopPropagation()">✕</span></div></div>'}).join("")
-  +'</div></div></div>'
-  +'<div class="card"><div class="card-title">'+(T?"学习闭环":"Learning Loop")+'</div><div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 0;flex-wrap:wrap">'
-  +["招聘入职","绩效评估","模式提取","优化招聘","评分提升"].map(function(s,i){return '<div style="background:'+["#e6f7ff","#f6ffed","#f9f0ff","#fff7e6","#e6f7ff"][i]+';padding:8px 14px;border-radius:6px;font-size:12px">'+s+'</div>'+(i<4?'<span style="color:#999">→</span>':'')}).join("")
-  +'</div></div>';
-}
-
-function showPatternModal(idx,type){
-  var T=lang==="zh";var p=PATTERNS[idx];if(!p)return;
-  var html='<div style="margin-bottom:12px"><div class="pattern-type '+type+'" style="font-size:12px">'+(T?(type==="success"?"成功模式":"失败模式"):(type==="success"?"Success Pattern":"Failure Pattern"))+' · '+(T?"置信度":"Confidence")+' '+p.conf+'</div>'
-  +'<div style="font-size:13px;line-height:1.8;margin-top:8px">'+p.text+'</div></div>'
-  +'<div style="font-size:12px;color:#666;margin-bottom:12px;padding:10px;background:#fafafa;border-radius:6px">'+(p.detail||'')+'</div>'
-  +'<div style="font-size:12px;font-weight:600;color:#333;margin-bottom:8px">'+(T?"支撑员工":"Supporting Employees")+'</div>'
-  +(p.ev||[]).map(function(e){return '<div style="font-size:12px;color:#666;padding:6px 0;border-bottom:1px solid #f0f0f0">• '+e+'</div>'}).join("")
-  +'<div style="font-size:11px;color:#999;margin-top:8px">'+(T?"数据来源：人才盘点结果 + 绩效评估记录":"Source: Talent review + performance records")+'</div>';
-  showModal((T?(type==="success"?"成功模式详情":"失败模式详情"):(type==="success"?"Success Pattern":"Failure Pattern")),html);
-}
-
-// ===== Recruitment Optimization =====
-var OPT_TAB=0;
-function rOpt(el){
-  var T=lang==="zh";
-  var tabs=[
-    {name:T?"刘强 — 大客户经理":"Liu Qiang — KAM",color:"#1890ff"},
-    {name:T?"陈芳 — 嵌入式工程师":"Chen Fang — Embedded Eng",color:"#52c41a"},
-    {name:T?"何伟 — 交付经理（风险）":"He Wei — Delivery Mgr (Risk)",color:"#f5222d"}
-  ];
-  el.innerHTML='<div class="page-title">'+(T?"招聘优化 — 学习结果的应用":"Recruitment Optimization")+'</div>'
-  +'<div style="display:flex;gap:6px;margin-bottom:16px">'+tabs.map(function(t,i){return '<div onclick="OPT_TAB='+i+';showPage(\'optimize\')" style="padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;transition:all .2s;background:'+(i===OPT_TAB?t.color:'#f0f0f0')+';color:'+(i===OPT_TAB?'#fff':'#666')+';font-weight:'+(i===OPT_TAB?'600':'400')+'">'+t.name+'</div>'}).join("")+'</div>'
-  +'<div id="opt-candidate"></div>';
-  [rOpt1,rOpt2,rOpt3][OPT_TAB](document.getElementById("opt-candidate"),T);
-}
-function rOpt1(el,T){
-  el.innerHTML='<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#1890ff"></span>'+(T?"候选人分析：刘强应聘 Key Account Manager":"Candidate: Liu Qiang for KAM")+'</div><span class="tag yellow">'+(T?"需深入面试":"Needs deep interview")+'</span></div>'
-  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"简历能力声明":"Resume Claims")+'</div>'
-  +'<div class="claim-item"><span class="claim-type leadership">leadership</span>'+(T?"从零搭建大客户管理团队，覆盖 KA/SKA 两层":"Built key account team, KA/SKA")+'</div>'
-  +'<div class="claim-item"><span class="claim-type sales">sales</span>'+(T?"季度业务回顾机制设计，客户留存率提升 18%":"QBR design, 18% retention")+'</div>'
-  +'<div class="claim-item"><span class="claim-type delivery">delivery</span>'+(T?"主导多个大型项目交付，按时交付率 95%":"Multiple projects, 95% on-time")+'</div>'
-  +'<div class="claim-item"><span class="claim-type domain">domain</span>'+(T?"客户生命周期价值分析与优化":"CLV analysis and optimization")+'</div>'
-  +'<div class="claim-item"><span class="claim-type project">project</span>'+(T?"主导多个项目（无具体数据）":"Led projects (no data)")+'</div>'
-  +'</div><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"AI 匹配分析":"AI Match Analysis")+'</div>'
-  +'<div class="score-row"><span class="score-label">'+(T?"基础匹配":"Base")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:60%;background:#faad14"></div></div><span class="score-value" style="color:#faad14">3.0</span></div>'
-  +'<div style="font-size:11px;color:#666;margin:6px 0">'
-  +'<div style="display:flex;align-items:center;gap:6px"><span style="color:#52c41a;font-weight:600">+0.5</span>'+(T?"成功模式：匹配张三「从零搭建大客户」模式":"Success: matches Zhang San's pattern")+'</div>'
-  +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span style="color:#f5222d;font-weight:600">-0.2</span>'+(T?"失败模式：无具体数据（赵六模式）":"Failure: no data (Zhao Liu pattern)")+'</div></div>'
-  +'<div class="score-row"><span class="score-label" style="font-weight:600">'+(T?"最终":"Final")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:66%;background:#1890ff"></div></div><span class="score-value" style="color:#1890ff;font-size:16px">3.3</span></div>'
-  +'</div></div></div>'
-  +'<div class="card"><div class="card-title"><span class="dot" style="background:#fa8c16"></span>'+(T?"面试建议":"Interview Suggestions")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
-  +'<div style="margin-bottom:6px">🎯 '+(T?"重点考察经销商管理经验（张三的弱项，刘强可能有优势）":"Focus on dealer mgmt")+'</div>'
-  +'<div style="margin-bottom:6px">🔍 '+(T?"追问项目具体数据，验证「主导」声明的真实性":"Probe project data")+'</div>'
-  +'<div style="margin-bottom:6px">⚠️ '+(T?"注意：Claims 中有「主导多个项目」但无具体数据，需追问细节":"'Led multiple projects' without data — probe details")+'</div>'
-  +'</div></div>';
-}
-function rOpt2(el,T){
-  el.innerHTML='<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+(T?"候选人分析：陈芳应聘嵌入式软件工程师":"Candidate: Chen Fang for Embedded Engineer")+'</div><span class="tag green">'+(T?"强烈推荐":"Strongly recommended")+'</span></div>'
-  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"简历能力声明":"Resume Claims")+'</div>'
-  +'<div class="claim-item"><span class="claim-type domain">domain</span>'+(T?"AUTOSAR Classic Platform 架构设计，主导 3 个 ECU 项目落地":"AUTOSAR architect, led 3 ECU projects")+'</div>'
-  +'<div class="claim-item"><span class="claim-type technical">technical</span>'+(T?"ISO 26262 功能安全认证（ASIL-D），独立完成 FMEA 分析":"ISO 26262 ASIL-D, FMEA")+'</div>'
-  +'<div class="claim-item"><span class="claim-type technical">technical</span>'+(T?"嵌入式 C/C++ 开发 8 年，精通 RTOS 和 CAN/LIN 协议":"8 years C/C++, RTOS, CAN/LIN")+'</div>'
-  +'</div><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"AI 匹配分析":"AI Match Analysis")+'</div>'
-  +'<div class="score-row"><span class="score-label" style="font-weight:600">'+(T?"最终":"Final")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:84%;background:#52c41a"></div></div><span class="score-value" style="color:#52c41a;font-size:16px">4.2</span></div>'
-  +'</div></div></div>'
-  +'<div class="card"><div class="card-title"><span class="dot" style="background:#fa8c16"></span>'+(T?"面试建议":"Interview Suggestions")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
-  +'<div style="margin-bottom:6px">🎯 '+(T?"验证 AUTOSAR 工具链搭建细节":"Verify AUTOSAR toolchain details")+'</div>'
-  +'<div style="margin-bottom:6px">💡 '+(T?"量化 Claims 质量很高，重点放在深度验证":"Focus on depth verification")+'</div>'
-  +'</div></div>';
-}
-function rOpt3(el,T){
-  el.innerHTML='<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#f5222d"></span>'+(T?"候选人分析：何伟应聘交付运营经理":"Candidate: He Wei for Delivery Ops Manager")+'</div><span class="tag red">'+(T?"高风险，建议淘汰":"High risk, recommend reject")+'</span></div>'
-  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"简历能力声明":"Resume Claims")+'</div>'
-  +'<div class="claim-item"><span class="claim-type leadership">leadership</span>'+(T?"主导多个大型项目交付，管理跨部门团队":"Led multiple large projects")+'</div>'
-  +'<div class="claim-item"><span class="claim-type project">project</span>'+(T?"负责多个项目的整体推进和落地":"Drove multiple projects end-to-end")+'</div>'
-  +'</div><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(T?"AI 匹配分析":"AI Match Analysis")+'</div>'
-  +'<div class="score-row"><span class="score-label" style="font-weight:600">'+(T?"最终":"Final")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:40%;background:#f5222d"></div></div><span class="score-value" style="color:#f5222d;font-size:16px">2.0</span></div>'
-  +'</div></div></div>'
-  +'<div class="card"><div class="card-title"><span class="dot" style="background:#f5222d"></span>'+(T?"风险分析":"Risk Analysis")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
-  +'<div style="padding:10px;background:#fff1f0;border-radius:6px;border-left:3px solid #f5222d;margin-bottom:8px"><b>'+T?'风险 1：模糊 Claims 模式':'Risk 1: Vague Claims'+'</b><br>'+T?'4 条 Claims 全部无量化数据':'All 4 claims have zero quantified data'+'</div>'
-  +'<div style="padding:10px;background:#fff1f0;border-radius:6px;border-left:3px solid #f5222d;margin-bottom:8px"><b>'+T?'风险 2：领导力信号缺失':'Risk 2: Missing Leadership'+'</b><br>'+T?'声称管理团队但无支撑证据':'Claims team mgmt without evidence'+'</div>'
-  +'</div></div>'
-  +'<div class="card"><div class="card-title"><span class="dot" style="background:#fa8c16"></span>'+(T?"建议":"Recommendation")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
-  +'<div style="padding:10px;background:#fff1f0;border-radius:6px;margin-bottom:8px"><b>🚫 '+(T?"建议淘汰，不进入面试环节":"Recommend reject, skip interview")+'</b></div>'
-  +'</div></div>';
-}
-
-// SVG Radar
+// ==================== SVG RADAR ====================
 function makeRadar(obj){
   var keys=Object.keys(obj),vals=Object.values(obj),n=keys.length;
-  if(n===0)return'<svg viewBox="0 0 260 240" width="260" height="240"><text x="130" y="120" text-anchor="middle" fill="#999" font-size="12">'+(lang==='zh'?'暂无数据':'No data')+'</text></svg>';
-  var cx=130,cy=120,r=90;
-  var pts=[];
+  if(n===0)return'<svg viewBox="0 0 260 240" width="260" height="240"><text x="130" y="120" text-anchor="middle" fill="#999" font-size="12">'+T('暂无数据')+'</text></svg>';
+  var cx=130,cy=120,r=90,pts=[];
   for(var i=0;i<n;i++){var a=Math.PI*2*i/n-Math.PI/2;pts.push({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)})}
   var svg='<svg viewBox="0 0 260 240" width="260" height="240">';
   for(var j=1;j<=4;j++){svg+='<polygon points="'+pts.map(function(p){return (cx+(p.x-cx)*j/4)+','+(cy+(p.y-cy)*j/4)}).join(' ')+'" fill="none" stroke="#e8e8e8" stroke-width="0.5"/>'}
   svg+='<polygon points="'+pts.map(function(p){return p.x+','+p.y}).join(' ')+'" fill="none" stroke="#e8e8e8" stroke-width="1"/>';
-  var dataPoly=pts.map(function(p,i){return (cx+r*(vals[i]/100)*Math.cos(Math.PI*2*i/n-Math.PI/2))+','+(cy+r*(vals[i]/100)*Math.sin(Math.PI*2*i/n-Math.PI/2))}).join(' ');
-  svg+='<polygon points="'+dataPoly+'" fill="rgba(24,144,255,0.15)" stroke="#1890ff" stroke-width="1.5"/>';
+  var dp=pts.map(function(p,i){return (cx+r*(vals[i]/100)*Math.cos(Math.PI*2*i/n-Math.PI/2))+','+(cy+r*(vals[i]/100)*Math.sin(Math.PI*2*i/n-Math.PI/2))}).join(' ');
+  svg+='<polygon points="'+dp+'" fill="rgba(24,144,255,0.15)" stroke="#1890ff" stroke-width="1.5"/>';
   pts.forEach(function(p,i){
     var lx=p.x+(p.x-cx)*0.18,ly=p.y+(p.y-cy)*0.18;
     svg+='<line x1="'+cx+'" y1="'+cy+'" x2="'+p.x+'" y2="'+p.y+'" stroke="#e8e8e8" stroke-width="0.5"/>';
     svg+='<text x="'+lx+'" y="'+ly+'" text-anchor="middle" font-size="10" fill="#999">'+keys[i]+'</text>';
     svg+='<circle cx="'+(cx+r*(vals[i]/100)*Math.cos(Math.PI*2*i/n-Math.PI/2))+'" cy="'+(cy+r*(vals[i]/100)*Math.sin(Math.PI*2*i/n-Math.PI/2))+'" r="3" fill="#1890ff"/>';
   });
-  svg+='</svg>';
-  return svg;
+  svg+='</svg>';return svg;
 }
 
-// ===== Override rEmp to handle list vs detail =====
-var _origPage=null;
-rEmp=function(el){
-  // If selEmp was just set by clicking "View" or from employee list, show detail
-  if(selEmp && el.dataset && el.dataset.showDetail){
-    rEmp_detail(el);return;
-  }
-  // Check if page title contains an employee name (detail view indicator)
-  _rEmpList(el);
-};
-
-// Patch: When clicking "查看" in list, switch to detail
-var _origShowPage=showPage;
-showPage=function(p){
-  if(p==='employee'&&selEmp&&currentPage!=='employee'){
-    // Coming from dashboard/core list -> show detail
-  }
-  _origShowPage(p);
-};
-
-// Init - override rEmp for detail view support
-rEmp=function(el){
-  // Check if we need detail view (set via viewEmp function)
-  if(el._showDetail){
-    el._showDetail=false;
-    rEmp_detail(el);return;
-  }
-  _rEmpList(el);
-};
-function viewEmp(id){
-  selEmp=EMP.find(function(e){return e.id===id});
-  currentPage='employee';
-  document.querySelectorAll(".nav-item").forEach(function(n){n.classList.toggle("active",n.dataset.page==='employee')});
-  var el=document.getElementById("page-content");
-  el._showDetail=true;rEmp_detail(el);
+// ==================== PAGE: DASHBOARD ====================
+function renderDashboard(el){
+  var core=EMP.filter(function(e){return e.grid==="核心骨干"});
+  var high=EMP.filter(function(e){return e.grid==="高潜人才"});
+  var low=EMP.filter(function(e){return e.grid==="低绩效人才"});
+  var deptMap={};EMP.forEach(function(e){deptMap[e.dept]=(deptMap[e.dept]||0)+1});
+  el.innerHTML='<div class="page-title">'+T("工作台","Dashboard")+'</div>'
+  +'<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+  +'<button class="btn btn-primary btn-sm" onclick="showModal(\''+T("新增员工")+'\',empFormHTML(null,false))">+ '+T("新增员工")+'</button>'
+  +'<button class="btn btn-ghost btn-sm" onclick="exportCSV()">📤 CSV</button>'
+  +'<button class="btn btn-ghost btn-sm" onclick="importCSV()">📥 CSV</button>'
+  +'<button class="btn btn-ghost btn-sm" onclick="exportJSON()">📤 JSON</button>'
+  +'<button class="btn btn-ghost btn-sm" onclick="importJSON()">📥 JSON</button>'
+  +'<button class="btn btn-ghost btn-sm" onclick="resetData()">🔄 '+T("重置")+'</button>'
+  +'</div>'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#1890ff"></span>'+T("人才概览")+'</div></div>'
+  +'<div class="stats-grid">'
+  +'<div class="stat-card"><div class="stat-value">'+EMP.length+'</div><div class="stat-label">'+T("员工")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value" style="color:#52c41a">'+core.length+'</div><div class="stat-label">'+T("核心骨干")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value" style="color:#1890ff">'+high.length+'</div><div class="stat-label">'+T("高潜")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value" style="color:#f5222d">'+low.length+'</div><div class="stat-label">'+T("低绩效")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value">'+PATTERNS.length+'</div><div class="stat-label">'+T("学习模式")+'</div></div>'
+  +'<div class="stat-card"><div class="stat-value">'+Object.keys(deptMap).length+'</div><div class="stat-label">'+T("部门数")+'</div></div>'
+  +'</div></div>'
+  +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#1890ff"></span>'+T("部门分布")+'</div></div>'
+  +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+Object.keys(deptMap).map(function(d){
+    var pct=Math.round(deptMap[d]/EMP.length*100);
+    return '<div style="background:#f0f5ff;padding:8px 14px;border-radius:6px;text-align:center;min-width:80px"><div style="font-size:20px;font-weight:600;color:#1890ff">'+deptMap[d]+'</div><div style="font-size:11px;color:#666">'+d+'</div><div style="font-size:10px;color:#999">'+pct+'%</div></div>'}).join("")+'</div></div>'
+  +'<div class="card"><div class="card-title">'+T("快捷操作")+'</div><div style="margin-top:8px;display:grid;gap:6px">'
+  +'<button class="btn btn-primary" onclick="showPage(\'employee\')" style="width:100%">'+T("查看全部员工")+'</button>'
+  +'<button class="btn btn-ghost" onclick="showPage(\'review\')" style="width:100%">'+T("人才盘点")+'</button>'
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+T("核心骨干")+'</div></div>'
+  +'<div style="display:flex;gap:10px;flex-wrap:wrap">'+core.map(function(e){return '<div class="claim-item" onclick="viewEmp(\''+e.id+'\')" style="flex:1;min-width:180px"><div class="emp-avatar" style="background:#e6f7ff;color:#1890ff">'+e.name[0]+'</div><div class="emp-info"><div class="emp-name">'+e.name+'</div><div class="emp-pos">'+e.pos+'</div></div><span class="tag green">S</span></div>'}).join("")+'</div></div>';
 }
 
-showPage("dashboard");
+// ==================== PAGE: EMPLOYEE ====================
+function renderEmployee(el){
+  if(empView==="detail"){renderEmployeeDetail(el);return}
+  var depts=[];EMP.forEach(function(e){if(depts.indexOf(e.dept)===-1)depts.push(e.dept)});
+  var filtered=EMP.filter(function(e){
+    if(empFilter.search&&e.name.indexOf(empFilter.search)===-1&&e.pos.toLowerCase().indexOf(empFilter.search.toLowerCase())===-1)return false;
+    if(empFilter.dept&&e.dept!==empFilter.dept)return false;
+    if(empFilter.perf&&e.perf!==empFilter.perf)return false;
+    return true;
+  });
+  var html='<div class="page-title">'+T("员工档案")+'<button class="btn btn-primary btn-sm" onclick="showModal(\''+T("新增员工")+'\',empFormHTML(null,false))">+ '+T("新增")+'</button></div>'
+  +'<div class="card"><div class="search-bar">'
+  +'<input class="form-input" placeholder="'+T("搜索姓名/岗位...")+'" value="'+empFilter.search+'" oninput="empFilter.search=this.value;renderPage()">'
+  +'<select class="form-input" style="width:120px" onchange="empFilter.dept=this.value;renderPage()"><option value="">'+T("全部部门")+'</option>'+depts.map(function(d){return '<option value="'+d+'"'+(empFilter.dept===d?' selected':'')+'>'+d+'</option>'}).join("")+'</select>'
+  +'<select class="form-input" style="width:120px" onchange="empFilter.perf=this.value;renderPage()"><option value="">'+T("全部绩效")+'</option><option value="S"'+(empFilter.perf==='S'?' selected':'')+'>S</option><option value="A"'+(empFilter.perf==='A'?' selected':'')+'>A</option><option value="B+"'+(empFilter.perf==='B+'?' selected':'')+'>B+</option><option value="B"'+(empFilter.perf==='B'?' selected':'')+'>B</option><option value="C"'+(empFilter.perf==='C'?' selected':'')+'>C</option></select>'
+  +'<span style="font-size:12px;color:#999">'+filtered.length+'/'+EMP.length+'</span>'
+  +'</div>';
+  html+='<div style="max-height:calc(100vh - 240px);overflow-y:auto">';
+  filtered.forEach(function(e){
+    var pc=e.perf==="S"?"#52c41a":e.perf==="A"?"#1890ff":e.perf==="B+"?"#faad14":"#f5222d";
+    var bgc=e.perf==="S"?"#f6ffed":e.perf==="A"?"#e6f7ff":e.perf==="B+"?"#fffbe6":"#fff1f0";
+    html+='<div class="emp-row" draggable="true" data-id="'+e.id+'" ondragstart="onDragStart(event)" ondragend="onDragEnd(event)">'
+    +'<div class="emp-avatar" style="background:'+bgc+';color:'+pc+'">'+e.name[0]+'</div>'
+    +'<div class="emp-info"><div class="emp-name">'+e.name+' <span class="tag" style="background:'+bgc+';color:'+pc+'">'+e.perf+'</span></div>'
+    +'<div class="emp-pos">'+e.pos+' · '+e.dept+' · '+e.grid+'</div></div>'
+    +'<div class="emp-actions">'
+    +'<button class="btn btn-ghost btn-sm" onclick="viewEmp(\''+e.id+'\');event.stopPropagation()">'+T("查看")+'</button>'
+    +'<button class="btn btn-ghost btn-sm" onclick="showModal(\''+T("编辑")+'\',empFormHTML(EMP.find(function(x){return x.id===\''+e.id+'\'}),true));event.stopPropagation()">'+T("编辑")+'</button>'
+    +'<button class="btn btn-danger btn-sm" onclick="deleteEmployee(\''+e.id+'\');event.stopPropagation()">✕</button>'
+    +'</div></div>';
+  });
+  html+='</div></div>';
+  el.innerHTML=html;
+}
+
+function renderEmployeeDetail(el){
+  var e=selEmp;if(!e){empView="list";renderPage();return}
+  var pc=e.perf==="S"?"#52c41a":e.perf==="A"?"#1890ff":e.perf==="B+"?"#faad14":"#f5222d";
+  el.innerHTML='<div class="page-title">'+T("员工档案")+'<div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="empView=\'list\';renderPage()">← '+T("返回")+'</button><button class="btn btn-primary btn-sm" onclick="showModal(\''+T("编辑")+'\',empFormHTML(selEmp,true))">'+T("编辑")+'</button></div></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div>'
+  +'<div class="card"><div class="card-title">'+T("基本信息")+'</div><div style="margin-top:8px;font-size:13px;line-height:2;color:#666">'
+  +'<div><b>'+T("姓名")+'：</b> '+e.name+'</div>'
+  +'<div><b>'+T("岗位")+'：</b> '+e.pos+'</div>'
+  +'<div><b>'+T("部门")+'：</b> '+e.dept+'</div>'
+  +'<div><b>'+T("资历")+'：</b> '+e.lv+'</div>'
+  +'<div><b>'+T("入职")+'：</b> '+e.hire+'</div>'
+  +'<div><b>'+T("招聘分数")+'：</b> <span style="color:'+(e.score>=4?"#52c41a":e.score>=3?"#faad14":"#f5222d")+';font-weight:600">'+e.score+'</span></div>'
+  +'<div><b>'+T("绩效")+'：</b> <span style="color:'+pc+';font-weight:600">'+e.perf+'</span> — '+e.grid+'</div></div></div>'
+  +'<div class="card"><div class="card-header"><div class="card-title">'+T("绩效历史")+'</div><span class="card-link" onclick="showModal(\''+T("新增绩效")+'\',perfFormHTML(\''+e.id+'\'))">+ '+T("新增")+'</span></div><div style="margin-top:8px">'
+  +(e.perfH.length?e.perfH.map(function(h){var pct=h.g==="S"?100:h.g==="A"?85:h.g==="B+"?70:h.g==="B"?55:35;var clr=h.g==="S"?"#52c41a":h.g==="A"?"#1890ff":h.g==="B+"?"#faad14":"#f5222d";return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:12px;color:#666;width:56px">'+h.p+'</span><div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+clr+';border-radius:3px"></div></div><span style="font-size:12px;font-weight:600;color:'+clr+';width:24px;text-align:right">'+h.g+'</span></div>'}).join(""):'<p style="color:#999;font-size:12px">'+T("暂无绩效记录")+'</p>')
+  +'</div></div>'
+  +'<div class="card"><div class="card-header"><div class="card-title">'+T("能力声明")+' <span style="font-size:11px;color:#999;font-weight:normal">('+e.claims.length+')</span></div><span class="card-link" onclick="showModal(\''+T("新增能力声明")+'\',claimFormHTML(\''+e.id+'\'))">+ '+T("新增")+'</span></div><div style="margin-top:8px">'
+  +(e.claims.length?e.claims.map(function(c,i){return '<div class="claim-item"><span class="claim-type '+c.c+'">'+c.c+'</span><span style="flex:1;font-size:12px">'+c.t+'</span><span style="color:#f5222d;cursor:pointer;font-size:11px" onclick="removeClaim(\''+e.id+'\','+i+')">✕</span></div>'}).join(""):'<p style="color:#999;font-size:12px">'+T("暂无能力声明")+'</p>')
+  +'</div></div></div><div>'
+  +'<div class="card"><div class="card-header"><div class="card-title">'+T("能力雷达")+'</div><span class="card-link" onclick="showModal(\''+T("编辑雷达")+'\',radarFormHTML(\''+e.id+'\'))">'+T("编辑")+'</span></div><div class="radar-wrap">'+makeRadar(e.radar||{})+'</div></div>'
+  +'<div class="card"><div class="card-title">'+T("招聘匹配")+'</div><div style="margin-top:8px"><div class="score-row"><span class="score-label">'+T("综合")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:'+(e.score/5*100)+'%;background:'+(e.score>=4?"#52c41a":e.score>=3?"#faad14":"#f5222d")+'"></div></div><span class="score-value" style="color:'+(e.score>=4?"#52c41a":e.score>=3?"#faad14":"#f5222d")+'">'+e.score+'/5</span></div></div></div></div></div>';
+}
+
+// ==================== PAGE: REVIEW (NINE GRID) ====================
+function renderReview(el){
+  var gridMap={"低绩效人才":[],"待观察人才":[],"基础合格人才":[],"高潜人才":[],"核心骨干":[]};
+  EMP.forEach(function(e){if(gridMap[e.grid])gridMap[e.grid].push(e.name)});
+  var cells=[
+    {name:"低绩效",color:"#fff1f0",text:"#f5222d",gridKey:"低绩效人才"},
+    {name:"待观察",color:"#fffbe6",text:"#faad14",gridKey:"待观察人才"},
+    {name:"基础合格",color:"#f5f5f5",text:"#999",gridKey:"基础合格人才"},
+    {name:"待提升",color:"#fff7e6",text:"#fa8c16",gridKey:null},
+    {name:"待发展",color:"#e6f7ff",text:"#1890ff",gridKey:null},
+    {name:"高潜人才",color:"#e6f7ff",text:"#1890ff",gridKey:"高潜人才"},
+    {name:"低潜力",color:"#fff1f0",text:"#f5222d",gridKey:null},
+    {name:"成长型",color:"#fffbe6",text:"#faad14",gridKey:null},
+    {name:"核心骨干",color:"#f6ffed",text:"#52c41a",gridKey:"核心骨干"}
+  ];
+  el.innerHTML='<div class="page-title">'+T("人才盘点 — 九宫格")+'</div>'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#722ed1"></span>'+T("绩效 × 能力矩阵 — 拖拽员工调整分类")+'</div></div>'
+  +'<div class="nine-grid">'
+  +cells.map(function(c){
+    var items=c.gridKey?gridMap[c.gridKey]:[];
+    return '<div class="grid-cell" style="background:'+c.color+'" ondragover="onGridDragOver(event)" ondragleave="onGridDragLeave(event)" ondrop="onGridDrop(event,\''+(c.gridKey||c.name+'人才')+'\')">'
+    +'<div class="grid-label" style="color:'+c.text+'">'+c.name+'</div>'
+    +'<div class="grid-names" style="color:'+c.text+'">'+(items.length?items.join("\n"):"—")+'</div></div>'}).join("")
+  +'</div></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+  +'<div class="card"><div class="card-title">'+T("分布统计")+'</div><div style="margin-top:8px">'
+  +cells.filter(function(c){return c.gridKey&&gridMap[c.gridKey].length>0}).map(function(c){
+    var items=gridMap[c.gridKey];
+    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><div style="width:8px;height:8px;border-radius:2px;background:'+c.text+'"></div><span style="font-size:12px;width:80px;color:#666">'+c.name+'</span><div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.round(items.length/EMP.length*100)+'%;background:'+c.text+';border-radius:3px;opacity:.6"></div></div><span style="font-size:12px;color:'+c.text+';width:20px;text-align:right">'+items.length+'</span></div>'}).join("")
+  +'</div></div>'
+  +'<div class="card"><div class="card-title">'+T("关键发现")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
+  +'<div><span class="tag green">'+T('核心骨干')+' '+gridMap["核心骨干"].length+'人</span></div>'
+  +'<div style="margin-top:6px"><span class="tag blue">'+T('高潜人才')+' '+gridMap["高潜人才"].length+'人</span></div>'
+  +'<div style="margin-top:6px"><span class="tag red">'+T('低绩效')+' '+gridMap["低绩效人才"].length+'人</span></div>'
+  +'</div></div></div>';
+}
+
+// ==================== PAGE: LEARNING ====================
+function renderLearning(el){
+  var suc=PATTERNS.filter(function(p){return p.type==="success"});
+  var fail=PATTERNS.filter(function(p){return p.type==="failure"});
+  el.innerHTML='<div class="page-title">'+T("学习洞察 — 系统从数据中学到了什么")+'<button class="btn btn-primary btn-sm" onclick="showModal(\''+T("新增模式")+'\',patternFormHTML())">+ '+T("新增模式")+'</button></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+T("成功模式")+'</div><span class="tag green">'+suc.length+'</span></div><div style="margin-top:8px">'
+  +suc.map(function(p){var idx=PATTERNS.indexOf(p);return '<div class="pattern-card" onclick="showPatternModal('+idx+')"><div class="pattern-type success">'+T("成功")+' · '+p.conf+'</div><div class="pattern-text">'+p.text+'</div><div class="pattern-meta">📊 '+p.ev.length+' '+T("个员工")+' <span style="color:#f5222d;cursor:pointer;float:right" onclick="deletePattern('+idx+');event.stopPropagation()">✕</span></div></div>'}).join("")
+  +'</div></div>'
+  +'<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#f5222d"></span>'+T("失败模式")+'</div><span class="tag red">'+fail.length+'</span></div><div style="margin-top:8px">'
+  +fail.map(function(p){var idx=PATTERNS.indexOf(p);return '<div class="pattern-card failure" onclick="showPatternModal('+idx+')"><div class="pattern-type failure">'+T("失败")+' · '+p.conf+'</div><div class="pattern-text">'+p.text+'</div><div class="pattern-meta">📊 '+p.ev.length+' '+T("个员工")+' <span style="color:#f5222d;cursor:pointer;float:right" onclick="deletePattern('+idx+');event.stopPropagation()">✕</span></div></div>'}).join("")
+  +'</div></div></div>'
+  +'<div class="card"><div class="card-title">'+T("学习闭环")+'</div><div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 0;flex-wrap:wrap">'
+  +["招聘入职","绩效评估","模式提取","优化招聘","评分提升"].map(function(s,i){return '<div style="background:'+["#e6f7ff","#f6ffed","#f9f0ff","#fff7e6","#e6f7ff"][i]+';padding:8px 14px;border-radius:6px;font-size:12px">'+s+'</div>'+(i<4?'<span style="color:#999">→</span>':'')}).join("")
+  +'</div></div>';
+}
+function showPatternModal(idx){
+  var p=PATTERNS[idx];if(!p)return;
+  var html='<div style="margin-bottom:12px"><div class="pattern-type '+p.type+'" style="font-size:12px">'+T(p.type==="success"?"成功模式":"失败模式")+' · '+T("置信度")+' '+p.conf+'</div>'
+  +'<div style="font-size:13px;line-height:1.8;margin-top:8px">'+p.text+'</div></div>'
+  +'<div style="font-size:12px;color:#666;margin-bottom:12px;padding:10px;background:#fafafa;border-radius:6px">'+(p.detail||'')+'</div>'
+  +'<div style="font-size:12px;font-weight:600;color:#333;margin-bottom:8px">'+T("支撑员工")+'</div>'
+  +(p.ev||[]).map(function(e){return '<div style="font-size:12px;color:#666;padding:6px 0;border-bottom:1px solid #f0f0f0">• '+e+'</div>'}).join("");
+  showModal(T(p.type==="success"?"成功模式详情":"失败模式详情"),html);
+}
+
+// ==================== PAGE: OPTIMIZE ====================
+function renderOptimize(el){
+  var tabs=[
+    {name:T("刘强 — 大客户经理"),color:"#1890ff"},
+    {name:T("陈芳 — 嵌入式工程师"),color:"#52c41a"},
+    {name:T("何伟 — 交付经理（风险）"),color:"#f5222d"}
+  ];
+  el.innerHTML='<div class="page-title">'+T("招聘优化 — 学习结果的应用")+'</div>'
+  +'<div style="display:flex;gap:6px;margin-bottom:16px">'+tabs.map(function(t,i){return '<div onclick="OPT_TAB='+i+';renderPage()" style="padding:8px 16px;border-radius:6px;font-size:13px;cursor:pointer;transition:all .2s;background:'+(i===OPT_TAB?t.color:'#f0f0f0')+';color:'+(i===OPT_TAB?'#fff':'#666')+';font-weight:'+(i===OPT_TAB?'600':'400')+'">'+t.name+'</div>'}).join("")+'</div>'
+  +'<div id="opt-candidate"></div>';
+  var cands=[renderOpt1,renderOpt2,renderOpt3];
+  cands[OPT_TAB](document.getElementById("opt-candidate"));
+}
+function renderOpt1(el){
+  el.innerHTML='<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#1890ff"></span>'+T("候选人分析：刘强应聘 Key Account Manager")+'</div><span class="tag yellow">'+T("需深入面试")+'</span></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+T("简历能力声明")+'</div>'
+  +'<div class="claim-item"><span class="claim-type leadership">leadership</span>'+T("从零搭建大客户管理团队")+'</div>'
+  +'<div class="claim-item"><span class="claim-type sales">sales</span>'+T("QBR机制设计，客户留存率提升 18%")+'</div>'
+  +'<div class="claim-item"><span class="claim-type project">project</span>'+T("主导多个项目（无具体数据）")+'</div>'
+  +'</div><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+T("AI 匹配分析")+'</div>'
+  +'<div class="score-row"><span class="score-label">'+T("基础匹配")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:60%;background:#faad14"></div></div><span class="score-value" style="color:#faad14">3.0</span></div>'
+  +'<div style="font-size:11px;color:#666;margin:6px 0"><div style="display:flex;align-items:center;gap:6px"><span style="color:#52c41a;font-weight:600">+0.5</span>'+T("成功模式匹配")+'</div>'
+  +'<div style="display:flex;align-items:center;gap:6px;margin-top:4px"><span style="color:#f5222d;font-weight:600">-0.2</span>'+T("失败模式：无具体数据")+'</div></div>'
+  +'<div class="score-row"><span class="score-label" style="font-weight:600">'+T("最终")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:66%;background:#1890ff"></div></div><span class="score-value" style="color:#1890ff;font-size:16px">3.3</span></div></div></div></div>';
+}
+function renderOpt2(el){
+  el.innerHTML='<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#52c41a"></span>'+T("候选人分析：陈芳应聘嵌入式软件工程师")+'</div><span class="tag green">'+T("强烈推荐")+'</span></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+T("简历能力声明")+'</div>'
+  +'<div class="claim-item"><span class="claim-type domain">domain</span>'+T("AUTOSAR 架构设计，主导 3 个 ECU 项目")+'</div>'
+  +'<div class="claim-item"><span class="claim-type technical">technical</span>'+T("ISO 26262 ASIL-D 认证")+'</div>'
+  +'</div><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+T("AI 匹配分析")+'</div>'
+  +'<div class="score-row"><span class="score-label" style="font-weight:600">'+T("最终")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:84%;background:#52c41a"></div></div><span class="score-value" style="color:#52c41a;font-size:16px">4.2</span></div></div></div></div>';
+}
+function renderOpt3(el){
+  el.innerHTML='<div class="card"><div class="card-header"><div class="card-title"><span class="dot" style="background:#f5222d"></span>'+T("候选人分析：何伟应聘交付运营经理")+'</div><span class="tag red">'+T("高风险，建议淘汰")+'</span></div>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+T("简历能力声明")+'</div>'
+  +'<div class="claim-item"><span class="claim-type leadership">leadership</span>'+T("主导多个大型项目交付（无数据）")+'</div>'
+  +'</div><div><div style="font-size:13px;font-weight:600;margin-bottom:8px">'+T("AI 匹配分析")+'</div>'
+  +'<div class="score-row"><span class="score-label" style="font-weight:600">'+T("最终")+'</span><div class="score-bar" style="flex:1"><div class="fill" style="width:40%;background:#f5222d"></div></div><span class="score-value" style="color:#f5222d;font-size:16px">2.0</span></div></div></div></div>'
+  +'<div class="card"><div class="card-title"><span class="dot" style="background:#f5222d"></span>'+T("风险分析")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
+  +'<div style="padding:10px;background:#fff1f0;border-radius:6px;border-left:3px solid #f5222d;margin-bottom:8px"><b>'+T('风险 1：模糊 Claims 模式')+'</b><br>'+T('4 条 Claims 全部无量化数据')+'</div>'
+  +'<div style="padding:10px;background:#fff1f0;border-radius:6px;border-left:3px solid #f5222d;margin-bottom:8px"><b>'+T('风险 2：领导力信号缺失')+'</b><br>'+T('声称管理团队但无支撑证据')+'</div>'
+  +'</div></div>'
+  +'<div class="card"><div class="card-title">'+T("建议")+'</div><div style="margin-top:8px;font-size:12px;color:#666;line-height:1.8">'
+  +'<div style="padding:10px;background:#fff1f0;border-radius:6px;margin-bottom:8px"><b>🚫 '+T("建议淘汰，不进入面试环节")+'</b></div></div></div>';
+}
+
+// ==================== INIT ====================
+renderPage();
 </script>
 </body>
 </html>
